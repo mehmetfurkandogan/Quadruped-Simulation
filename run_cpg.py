@@ -87,6 +87,7 @@ for j in range(TEST_STEPS):
   q = env.robot.GetMotorAngles()
   dq = env.robot.getMotorVelocities()
 
+
   # loop through desired foot positions and calculate torques
   for i in range(4):
     # initialize torques for legi
@@ -94,6 +95,7 @@ for j in range(TEST_STEPS):
     # get desired foot i pos (xi, yi, zi) in leg frame
     leg_xyz = np.array([xs[i],sideSign[i] * foot_y,zs[i]])
     # call inverse kinematics to get corresponding joint angles (see ComputeInverseKinematics() in quadruped.py)
+
     leg_q = env.robot.ComputeInverseKinematics(i, leg_xyz) # [TODO] 
     # Add joint PD contribution to tau for leg i (Equation 4)
     tau += kp@(leg_q - q[3*(i-1):3*i]) + kd@(-dq[3*(i-1):3*i]) # [TODO] 
