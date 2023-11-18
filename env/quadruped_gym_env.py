@@ -224,8 +224,16 @@ class QuadrupedGymEnv(gym.Env):
       # [TODO] Set observation upper and lower ranges. What are reasonable limits? 
       # Note 50 is arbitrary below, you may have more or less
       # if using CPG-RL, remember to include limits on these
-      observation_high = (np.zeros(50) + OBSERVATION_EPS)
-      observation_low = (np.zeros(50) -  OBSERVATION_EPS)
+      observation_high = (np.concatenate((self._robot_config.UPPER_ANGLE_JOINT,
+                                         self._robot_config.VELOCITY_LIMITS,
+                                         np.array([1.0]*4))) +  OBSERVATION_EPS,
+                                         np.array(np.pi/180*[10, 30, 5]),
+                                         np.array(np.pi/180*[5, 10, 10]))
+      observation_low = (np.concatenate((self._robot_config.LOWER_ANGLE_JOINT,
+                                         -self._robot_config.VELOCITY_LIMITS,
+                                         np.array([-1.0]*4))) -  OBSERVATION_EPS,
+                                         np.array(-np.pi/180*[10, 30, 5]),
+                                         np.array(-np.pi/180*[5, 10, 10]))
     else:
       raise ValueError("observation space not defined or not intended")
 
@@ -254,7 +262,11 @@ class QuadrupedGymEnv(gym.Env):
       # [TODO] Get observation from robot. What are reasonable measurements we could get on hardware?
       # if using the CPG, you can include states with self._cpg.get_r(), for example
       # 50 is arbitrary
-      self._observation = np.zeros(50)
+      self._observation = np.concatenate((self.robot.GetMotorAngles(), 
+                                    self.robot.GetMotorVelocities(),
+                                    self.robot.GetBaseOrientation(),
+                                    self.robot.GetBaseOrientationRollPitchYaw(),
+                                    self.robot.GetBaseAngularVelocity() ))
 
     else:
       raise ValueError("observation space not defined or not intended")
@@ -356,10 +368,22 @@ class QuadrupedGymEnv(gym.Env):
     
     return max(reward,0) # keep rewards positive
     
-  def _reward_lr_course(self):
+  def _reward_lr_course(self, des_vel=0.5):
     """ Implement your reward function here. How will you improve upon the above? """
     # [TODO] add your reward function. 
-    return 0
+    vel_tracking_reward = 0.05 * np.exp( -1/ 0.25 *  (self.robot.GetBaseLinearVelocity()[0] - des_vel)**2 )
+    yaw_reward = -0.2 * np.abs(self.robot.GetBaseOrientationRollPitchYaw()[2])
+    drift_reward = -0.01 * np.abs(self.robot.GetBasePosition()[1]) 
+    energy_reward = 0 
+    for tau,vel in zip(self._dt_motor_torques,self._dt_motor_velocities):
+      energy_reward += np.abs(np.dot(tau,vel)) * self._time_step
+
+    reward = vel_tracking_reward \
+            + yaw_reward \
+            + drift_reward \
+            - 0.01 * energy_reward \
+            - 0.1 * np.linalg.norm(self.robot.GetBaseOrientation() - np.array([0,0,0,1]))
+    return max(reward, 0)
 
   def _reward(self):
     """ Get reward depending on task"""
@@ -417,14 +441,16 @@ class QuadrupedGymEnv(gym.Env):
     for i in range(4):
       # get Jacobian and foot position in leg frame for leg i (see ComputeJacobianAndPosition() in quadruped.py)
       # [TODO]
+      J, pos = env.robot.ComputeJacobianAndPosition(i)
       # desired foot position i (from RL above)
-      Pd = np.zeros(3) # [TODO]
+      Pd = des_foot_pos[i] # [TODO]
       # desired foot velocity i
       vd = np.zeros(3) 
       # foot velocity in leg frame i (Equation 2)
       # [TODO]
+      vel = J@dq[3*i:3*(i+1)]
       # calculate torques with Cartesian PD (Equation 5) [Make sure you are using matrix multiplications]
-      tau = np.zeros(3) # [TODO]
+      tau = np.transpose(J)@(kpCartesian@(Pd - pos) + kdCartesian@(vd-vel)) # [TODO]
 
       action[3*i:3*i+3] = tau
 
@@ -465,12 +491,12 @@ class QuadrupedGymEnv(gym.Env):
       z = zs[i]
 
       # call inverse kinematics to get corresponding joint angles
-      q_des = np.zeros(3) # [TODO]
+      q_des = self.robot.ComputeInverseKinematics(i, np.array([x, y, z])) # [TODO]
       # Add joint PD contribution to tau
-      tau = np.zeros(3) # [TODO] 
+      tau = kp@(leg_q - q[3*i:3*(i+1)]) + kd@(-dq[3*i:3*(i+1)]) # [TODO] 
 
       # add Cartesian PD contribution (as you wish)
-      # tau +=
+      # tau += np.transpose(J)@(kpCartesian@(leg_xyz - pos) + kdCartesian@(-vel))
 
       action[3*i:3*i+3] = tau
 
