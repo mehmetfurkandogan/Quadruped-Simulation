@@ -103,6 +103,7 @@ class HopfNetwork():
     """ For coupling oscillators in phase space. 
     [TODO] update all coupling matrices
     """
+
     self.PHI_trot = np.zeros((4,4))
     self.PHI_walk = np.zeros((4,4))
     self.PHI_bound = np.zeros((4,4))
@@ -154,11 +155,11 @@ class HopfNetwork():
     # loop through each leg's oscillator
     for i in range(4):
       # get r_i, theta_i from X
-      r, theta = 0, 0 # [TODO]
+      r, theta = X[0,:], X[1,:] # [TODO]
       # compute r_dot (Equation 6)
-      r_dot = 0 # [TODO]
+      r_dot =  alpha*(mu - r^2)*r# [TODO]
       # determine whether oscillator i is in swing or stance phase to set natural frequency omega_swing or omega_stance (see Section 3)
-      theta_dot = 0 # [TODO]
+      theta_dot = omega_stance if np.pi < theta < 2*np.pi else omega_swing # [TODO]
 
       # loop through other oscillators to add coupling (Equation 7)
       if self._couple:
