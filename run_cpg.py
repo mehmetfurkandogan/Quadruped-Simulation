@@ -109,7 +109,7 @@ for j in range(TEST_STEPS):
 
       # Get current foot velocity in leg frame (Equation 2)
       # [TODO] 
-      vel = np.transpose(J)@dq[3*i:3*(i+1)]
+      vel = J@dq[3*i:3*(i+1)]
       # Calculate torque contribution from Cartesian PD (Equation 5) [Make sure you are using matrix multiplications]
       tau += np.transpose(J)@(kpCartesian@(leg_xyz - pos) + kdCartesian@(-vel))  # [TODO]
 
