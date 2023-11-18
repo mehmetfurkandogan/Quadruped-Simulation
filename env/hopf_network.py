@@ -98,10 +98,10 @@ class HopfNetwork():
       self.X[0,:] = MU_LOW # mapping MU_LOW=1 to MU_UPP=2
 
   def set_phi(self, legs):
-    PHI = np.zeros(4,4)
+    PHI = np.zeros((4,4))
     for i in range(4):
       for j in range(4):
-        PHI[i,j] = legs(i) - legs(j)
+        PHI[i,j] = legs[i] - legs[j]
     return 2*np.pi*PHI
 
   def _set_gait(self,gait):
