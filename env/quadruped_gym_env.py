@@ -226,14 +226,14 @@ class QuadrupedGymEnv(gym.Env):
       # if using CPG-RL, remember to include limits on these
       observation_high = (np.concatenate((self._robot_config.UPPER_ANGLE_JOINT,
                                          self._robot_config.VELOCITY_LIMITS,
-                                         np.array([1.0]*4))) +  OBSERVATION_EPS,
-                                         np.array(np.pi/180*[10, 30, 5]),
-                                         np.array(np.pi/180*[5, 10, 10]))
+                                         np.array([1.0]*4), 
+                                         np.pi/180*np.array([10, 30, 5]),
+                                         np.pi/180*np.array([5, 10, 10]))) +  OBSERVATION_EPS)
       observation_low = (np.concatenate((self._robot_config.LOWER_ANGLE_JOINT,
                                          -self._robot_config.VELOCITY_LIMITS,
-                                         np.array([-1.0]*4))) -  OBSERVATION_EPS,
-                                         np.array(-np.pi/180*[10, 30, 5]),
-                                         np.array(-np.pi/180*[5, 10, 10]))
+                                         np.array([-1.0]*4),
+                                         -np.pi/180*np.array([10, 30, 5]),
+                                         -np.pi/180*np.array([5, 10, 10]))) -  OBSERVATION_EPS)
     else:
       raise ValueError("observation space not defined or not intended")
 
@@ -266,7 +266,7 @@ class QuadrupedGymEnv(gym.Env):
                                     self.robot.GetMotorVelocities(),
                                     self.robot.GetBaseOrientation(),
                                     self.robot.GetBaseOrientationRollPitchYaw(),
-                                    self.robot.GetBaseAngularVelocity() ))
+                                    self.robot.GetBaseAngularVelocity()))
 
     else:
       raise ValueError("observation space not defined or not intended")
@@ -368,18 +368,25 @@ class QuadrupedGymEnv(gym.Env):
     
     return max(reward,0) # keep rewards positive
     
-  def _reward_lr_course(self, des_vel=0.5):
+  def _reward_lr_course(self, des_vel = 0.5):
     """ Implement your reward function here. How will you improve upon the above? """
     # [TODO] add your reward function. 
-    vel_tracking_reward = 0.05 * np.exp( -1/ 0.25 *  (self.robot.GetBaseLinearVelocity()[0] - des_vel)**2 )
+    vel_tracking_reward = 0.05 * np.exp( -1 / 0.25 *  (self.robot.GetBaseLinearVelocity()[0] - des_vel)**2 )
+
     yaw_reward = -0.2 * np.abs(self.robot.GetBaseOrientationRollPitchYaw()[2])
     drift_reward = -0.01 * np.abs(self.robot.GetBasePosition()[1]) 
     energy_reward = 0 
     for tau,vel in zip(self._dt_motor_torques,self._dt_motor_velocities):
       energy_reward += np.abs(np.dot(tau,vel)) * self._time_step
 
+    curr_dist_to_goal, angle = self.get_distance_and_angle_to_goal()
+
+    # minimize distance to goal (we want to move towards the goal)
+    dist_reward = 10 * ( self._prev_pos_to_goal - curr_dist_to_goal)
+
     reward = vel_tracking_reward \
             + yaw_reward \
+            + dist_reward \
             + drift_reward \
             - 0.01 * energy_reward \
             - 0.1 * np.linalg.norm(self.robot.GetBaseOrientation() - np.array([0,0,0,1]))
@@ -493,7 +500,7 @@ class QuadrupedGymEnv(gym.Env):
       # call inverse kinematics to get corresponding joint angles
       q_des = self.robot.ComputeInverseKinematics(i, np.array([x, y, z])) # [TODO]
       # Add joint PD contribution to tau
-      tau = kp@(leg_q - q[3*i:3*(i+1)]) + kd@(-dq[3*i:3*(i+1)]) # [TODO] 
+      tau = kp[3*i:3*(i+1)]@(q_des - q[3*i:3*(i+1)]) + kd[3*i:3*(i+1)]@(-dq[3*i:3*(i+1)]) # [TODO] 
 
       # add Cartesian PD contribution (as you wish)
       # tau += np.transpose(J)@(kpCartesian@(leg_xyz - pos) + kdCartesian@(-vel))
