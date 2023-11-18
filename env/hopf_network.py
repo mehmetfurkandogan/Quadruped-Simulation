@@ -97,17 +97,21 @@ class HopfNetwork():
     if use_RL:
       self.X[0,:] = MU_LOW # mapping MU_LOW=1 to MU_UPP=2
 
-
+  def set_phi(self, legs):
+    PHI = np.zeros(4,4)
+    for i in range(4):
+      for j in range(4):
+        PHI[i,j] = legs(i) - legs(j)
+    return 2*np.pi*PHI
 
   def _set_gait(self,gait):
     """ For coupling oscillators in phase space. 
     [TODO] update all coupling matrices
     """
-
-    self.PHI_trot = np.zeros((4,4))
-    self.PHI_walk = np.zeros((4,4))
-    self.PHI_bound = np.zeros((4,4))
-    self.PHI_pace = np.zeros((4,4))
+    self.PHI_trot = self.set_phi(np.array([0.5, 0, 0, 0.5]))
+    self.PHI_walk = self.set_phi(np.array([0.5, 0, 0.25, 0.75]))
+    self.PHI_bound = self.set_phi(np.array([0.5, 0.5, 0, 0]))
+    self.PHI_pace = self.set_phi(np.array([0.5, 0, 0.5, 0]))
 
     if gait == "TROT":
       self.PHI = self.PHI_trot
@@ -131,8 +135,8 @@ class HopfNetwork():
       self._integrate_hopf_equations_rl()
     
     # map CPG variables to Cartesian foot xz positions (Equations 8, 9) 
-    x = np.zeros(4) # [TODO]
-    z = np.zeros(4) # [TODO]
+    x = -self._des_step_len*self.get_r()*np.cos(self.get_theta()) # [TODO]
+    z = np.array([-self._robot_height + self._ground_clearance*np.sin(self.get_theta()[i]) if np.sin(self.get_theta()[i]) > 0 else -self._robot_height + self._ground_penetration*np.sin(self.get_theta()[i]) for i in range(4)]) # [TODO]
 
     # scale x by step length
     if not self.use_RL:
@@ -155,21 +159,22 @@ class HopfNetwork():
     # loop through each leg's oscillator
     for i in range(4):
       # get r_i, theta_i from X
-      r, theta = X[0,:], X[1,:] # [TODO]
+      r, theta = X[:,i] # [TODO]
       # compute r_dot (Equation 6)
-      r_dot =  alpha*(mu - r^2)*r# [TODO]
+      r_dot = self._alpha*(self._mu - r**2)*r # [TODO]
       # determine whether oscillator i is in swing or stance phase to set natural frequency omega_swing or omega_stance (see Section 3)
-      theta_dot = omega_stance if np.pi < theta < 2*np.pi else omega_swing # [TODO]
+      theta_dot = self._omega_swing if theta <= np.pi and theta >= 0 else self._omega_stance # [TODO]
 
       # loop through other oscillators to add coupling (Equation 7)
       if self._couple:
-        theta_dot += 0 # [TODO]
+        for j in range(4):
+          theta_dot += r*self._coupling_strength*np.sin(self.get_theta()[j] - theta - self.PHI[i, j]) # [TODO]
 
       # set X_dot[:,i]
       X_dot[:,i] = [r_dot, theta_dot]
 
     # integrate 
-    self.X = np.zeros((2,4)) # [TODO]
+    self.X = X + (X_dot_prev + X_dot) * self._dt / 2 # [TODO]
     self.X_dot = X_dot
     # mod phase variables to keep between 0 and 2pi
     self.X[1,:] = self.X[1,:] % (2*np.pi)
@@ -213,9 +218,9 @@ class HopfNetwork():
       # get r_i, theta_i from X
       r, theta = X[:,i]
       # amplitude (use mu from RL, i.e. self._mu_rl[i])
-      r_dot = 0  # [TODO]
+      r_dot = self._alpha*(self._mu_rl[i] - r**2)*r # [TODO]
       # phase (use omega from RL, i.e. self._omega_rl[i])
-      theta_dot = 0 # [TODO]
+      theta_dot = self._omega_rl[i] # [TODO]
 
       X_dot[:,i] = [r_dot, theta_dot]
 
