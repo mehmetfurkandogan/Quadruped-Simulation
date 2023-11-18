@@ -52,7 +52,7 @@ foot_y = 0.0838 # this is the hip length
 sideSign = np.array([-1, 1, -1, 1]) # get correct hip sign (body right is negative)
 
 env = QuadrupedGymEnv(render=True,              # visualize
-                    on_rack=True,              # useful for debugging! 
+                    on_rack=False,              # useful for debugging! 
                     isRLGymInterface=False,     # not using RL
                     time_step=TIME_STEP,
                     action_repeat=1,
@@ -87,7 +87,6 @@ for j in range(TEST_STEPS):
   q = env.robot.GetMotorAngles()
   dq = env.robot.GetMotorVelocities()
 
-
   # loop through desired foot positions and calculate torques
   for i in range(4):
     # initialize torques for legi
@@ -99,17 +98,18 @@ for j in range(TEST_STEPS):
     leg_q = env.robot.ComputeInverseKinematics(i, leg_xyz) # [TODO] 
     # Add joint PD contribution to tau for leg i (Equation 4)
 
-    tau +=  kp@(leg_q - q[3*i:3*(i+1)])  + kd@(-dq[3*i:3*(i+1)]) # [TODO] 
+    tau += kp@(leg_q - q[3*i:3*(i+1)]) + kd@(-dq[3*i:3*(i+1)]) # [TODO] 
 
     # add Cartesian PD contribution
     if ADD_CARTESIAN_PD:
       # Get current Jacobian and foot position in leg frame (see ComputeJacobianAndPosition() in quadruped.py)
+
       # [TODO] 
       J, pos = env.robot.ComputeJacobianAndPosition(i)
 
       # Get current foot velocity in leg frame (Equation 2)
       # [TODO] 
-      vel = np.transpose(J)@dq[3*i:3*(i+1)]
+      vel = J@dq[3*i:3*(i+1)]
       # Calculate torque contribution from Cartesian PD (Equation 5) [Make sure you are using matrix multiplications]
       tau += np.transpose(J)@(kpCartesian@(leg_xyz - pos) + kdCartesian@(-vel))  # [TODO]
 
