@@ -54,8 +54,8 @@ LEARNING_ALG = "SAC";  USE_GPU = True
 
 # after implementing, you will want to test how well the agent learns with your MDP: 
 
-env_configs = {"motor_control_mode":"CPG",
-               "task_env": "FLAGRUN", #  "LR_COURSE_TASK",
+env_configs = {"motor_control_mode":"CARTESIAN_PD",
+               "task_env": "LR_COURSE_TASK", #  "LR_COURSE_TASK",
                "observation_space_mode": "LR_COURSE_OBS"}
 
 
@@ -66,7 +66,7 @@ else:
 
 if LOAD_NN:
     interm_dir = "./logs/intermediate_models/"
-    log_dir = interm_dir + '' # add path
+    log_dir = interm_dir + '111923222123' # add path
     stats_path = os.path.join(log_dir, "vec_normalize.pkl")
     model_name = get_latest_model(log_dir)
 

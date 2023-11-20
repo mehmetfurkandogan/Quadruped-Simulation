@@ -227,13 +227,13 @@ class QuadrupedGymEnv(gym.Env):
       observation_high = (np.concatenate((self._robot_config.UPPER_ANGLE_JOINT,
                                          self._robot_config.VELOCITY_LIMITS,
                                          np.array([1.0]*4), 
-                                         np.pi/180*np.array([10, 30, 5]),
-                                         np.pi/180*np.array([5, 10, 10]))) +  OBSERVATION_EPS)
+                                         np.pi/180*np.array([30, 30, 60]),
+                                         np.array([3.5, 3.5, 3.5]))) +  OBSERVATION_EPS)
       observation_low = (np.concatenate((self._robot_config.LOWER_ANGLE_JOINT,
                                          -self._robot_config.VELOCITY_LIMITS,
                                          np.array([-1.0]*4),
-                                         -np.pi/180*np.array([10, 30, 5]),
-                                         -np.pi/180*np.array([5, 10, 10]))) -  OBSERVATION_EPS)
+                                         -np.pi/180*np.array([30, 30, 60]),
+                                         -np.array([3.5, 3.5, 3.5]))) -  OBSERVATION_EPS)
     else:
       raise ValueError("observation space not defined or not intended")
 
@@ -265,8 +265,8 @@ class QuadrupedGymEnv(gym.Env):
       self._observation = np.concatenate((self.robot.GetMotorAngles(), 
                                     self.robot.GetMotorVelocities(),
                                     self.robot.GetBaseOrientation(),
-                                    self.robot.GetBaseOrientationRollPitchYaw(),
-                                    self.robot.GetBaseAngularVelocity()))
+                                    self.robot.GetBaseAngularVelocity(),
+                                    self.robot.GetBaseLinearVelocity()))
 
     else:
       raise ValueError("observation space not defined or not intended")
@@ -285,7 +285,7 @@ class QuadrupedGymEnv(gym.Env):
   ######################################################################################
   # Termination and reward
   ######################################################################################
-  def is_fallen(self,dot_prod_min=0.85):
+  def is_fallen(self,dot_prod_min = 0.85):
     """Decide whether the quadruped has fallen.
 
     If the up directions between the base and the world is larger (the dot
@@ -306,7 +306,7 @@ class QuadrupedGymEnv(gym.Env):
     """Decide whether we should stop the episode and reset the environment. """
     return self.is_fallen() 
 
-  def _reward_fwd_locomotion(self, des_vel_x=0.5):
+  def _reward_fwd_locomotion(self, des_vel_x = 0.5):
     """Learn forward locomotion at a desired velocity. """
     # track the desired velocity 
     vel_tracking_reward = 0.05 * np.exp( -1/ 0.25 *  (self.robot.GetBaseLinearVelocity()[0] - des_vel_x)**2 )
@@ -371,25 +371,32 @@ class QuadrupedGymEnv(gym.Env):
   def _reward_lr_course(self, des_vel = 0.5):
     """ Implement your reward function here. How will you improve upon the above? """
     # [TODO] add your reward function. 
-    vel_tracking_reward = 0.05 * np.exp( -1 / 0.25 *  (self.robot.GetBaseLinearVelocity()[0] - des_vel)**2 )
-
-    yaw_reward = -0.2 * np.abs(self.robot.GetBaseOrientationRollPitchYaw()[2])
-    drift_reward = -0.01 * np.abs(self.robot.GetBasePosition()[1]) 
-    energy_reward = 0 
+    vel_tracking_reward = 3 * np.exp(-np.linalg.norm((self.robot.GetBaseLinearVelocity()[0:2] - np.array([des_vel,0])))**2)
+    ang_vel_penalty = 3 * np.exp(-1.5*(self.robot.GetBaseLinearVelocity()[2])**2)
+    orientation_penalty = -3 * np.abs(self.robot.GetBaseOrientationRollPitchYaw()[2])**2
+    drift_penalty = -0.1 * np.abs(self.robot.GetBasePosition()[1]) 
+    energy_penalty = 0 
     for tau,vel in zip(self._dt_motor_torques,self._dt_motor_velocities):
-      energy_reward += np.abs(np.dot(tau,vel)) * self._time_step
+      energy_penalty += np.abs(np.dot(tau,vel)) * self._time_step
 
-    curr_dist_to_goal, angle = self.get_distance_and_angle_to_goal()
+    __, __, __, foot_contact_bool = self.robot.GetContactInfo()
+    slip_penalty = 0
+    clearance_penalty = 0
+    for i in range(4):
+      J, pos = self.robot.ComputeJacobianAndPosition(i)
+      slip_penalty += -0.08 * foot_contact_bool[i] * np.linalg.norm((J@self.robot.GetMotorVelocities()[3*i:3*i+3])[0:2])**2
+      clearance_penalty += - 15 * ((pos[2] - 0.1)**2) * np.linalg.norm((J@self.robot.GetMotorVelocities()[3*i: 3*i + 3])[0:2])**2
 
-    # minimize distance to goal (we want to move towards the goal)
-    dist_reward = 10 * ( self._prev_pos_to_goal - curr_dist_to_goal)
-
+    base_motion_penalty = -1.5 * (0.8*self.robot.GetBaseLinearVelocity()[2]**2 + np.abs(0.2*self.robot.GetBaseAngularVelocity()[0]) + np.abs(0.2*self.robot.GetBaseAngularVelocity()[1]))
     reward = vel_tracking_reward \
-            + yaw_reward \
-            + dist_reward \
-            + drift_reward \
-            - 0.01 * energy_reward \
-            - 0.1 * np.linalg.norm(self.robot.GetBaseOrientation() - np.array([0,0,0,1]))
+            + orientation_penalty \
+            + drift_penalty \
+            - 0.01 * energy_penalty \
+            + slip_penalty \
+            + clearance_penalty \
+            + base_motion_penalty \
+            + ang_vel_penalty
+
     return max(reward, 0)
 
   def _reward(self):
@@ -442,13 +449,13 @@ class QuadrupedGymEnv(gym.Env):
     kpCartesian = self._robot_config.kpCartesian
     kdCartesian = self._robot_config.kdCartesian
     # get current motor velocities
-    qd = self.robot.GetMotorVelocities()
+    dq = self.robot.GetMotorVelocities()
 
     action = np.zeros(12)
     for i in range(4):
       # get Jacobian and foot position in leg frame for leg i (see ComputeJacobianAndPosition() in quadruped.py)
       # [TODO]
-      J, pos = env.robot.ComputeJacobianAndPosition(i)
+      J, pos = self.robot.ComputeJacobianAndPosition(i)
       # desired foot position i (from RL above)
       Pd = des_foot_pos[i] # [TODO]
       # desired foot velocity i
