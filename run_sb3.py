@@ -50,11 +50,11 @@ LOAD_NN = False # if you want to initialize training with a previous model
 NUM_ENVS = 1    # how many pybullet environments to create for data collection
 USE_GPU = True # make sure to install all necessary drivers 
 
-LEARNING_ALG = "PPO";  USE_GPU = True
+LEARNING_ALG = "SAC";  USE_GPU = True
 
 # after implementing, you will want to test how well the agent learns with your MDP: 
 
-env_configs = {"motor_control_mode":"CPG",
+env_configs = {"motor_control_mode":"PD",
                "task_env": "LR_COURSE_TASK", #  "LR_COURSE_TASK",
                "observation_space_mode": "LR_COURSE_OBS"}
 
@@ -74,7 +74,7 @@ if LOAD_NN:
 SAVE_PATH = './logs/intermediate_models/'+ datetime.now().strftime("%m%d%y%H%M%S") + '/'
 os.makedirs(SAVE_PATH, exist_ok=True)
 # checkpoint to save policy network periodically
-checkpoint_callback = CheckpointCallback(save_freq=15000, save_path=SAVE_PATH,name_prefix='rl_model', verbose=2)
+checkpoint_callback = CheckpointCallback(save_freq=30000, save_path=SAVE_PATH,name_prefix='rl_model', verbose=2)
 # create Vectorized gym environment
 env = lambda: QuadrupedGymEnv(**env_configs)  
 env = make_vec_env(env, monitor_dir=SAVE_PATH,n_envs=NUM_ENVS)
@@ -90,7 +90,7 @@ if LOAD_NN:
 policy_kwargs = dict(net_arch=[256,256])
 # What are these hyperparameters? Check here: https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html
 n_steps = 4096 
-learning_rate = lambda f: 1e-2 
+learning_rate = lambda f: 1e-4 
 ppo_config = {  "gamma":0.99, 
                 "n_steps": int(n_steps/NUM_ENVS), 
                 "ent_coef":0.0, 

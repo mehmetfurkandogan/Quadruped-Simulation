@@ -226,24 +226,14 @@ class QuadrupedGymEnv(gym.Env):
       # if using CPG-RL, remember to include limits on these
       observation_high = (np.concatenate((self._robot_config.UPPER_ANGLE_JOINT,
                                          self._robot_config.VELOCITY_LIMITS,
-<<<<<<< Updated upstream
-                                         np.array([1.0]*4), 
-=======
-                                         np.array([1.0]*4)  +  OBSERVATION_EPS, 
->>>>>>> Stashed changes
+                                         np.array([1.0]*4),
                                          np.pi/180*np.array([10, 10, 10]),
                                          np.array([1, 1, 1]))) +  OBSERVATION_EPS)
       observation_low = (np.concatenate((self._robot_config.LOWER_ANGLE_JOINT,
                                          -self._robot_config.VELOCITY_LIMITS,
-<<<<<<< Updated upstream
                                          np.array([-1.0]*4),
                                          -np.pi/180*np.array([10, 10, 10]),
                                          -np.array([1, 1, 1]))) -  OBSERVATION_EPS)
-=======
-                                         np.array([-1.0]*4)  - OBSERVATION_EPS,
-                                         -np.pi/180*np.array([10, 10, 10]),
-                                         -np.array([1, 1, 1]))))
->>>>>>> Stashed changes
     else:
       raise ValueError("observation space not defined or not intended")
 
