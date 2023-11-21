@@ -227,13 +227,13 @@ class QuadrupedGymEnv(gym.Env):
       observation_high = (np.concatenate((self._robot_config.UPPER_ANGLE_JOINT,
                                          self._robot_config.VELOCITY_LIMITS,
                                          np.array([1.0]*4), 
-                                         np.pi/180*np.array([30, 30, 60]),
-                                         np.array([3.5, 3.5, 3.5]))) +  OBSERVATION_EPS)
+                                         np.pi/180*np.array([10, 10, 10]),
+                                         np.array([1, 1, 1]))) +  OBSERVATION_EPS)
       observation_low = (np.concatenate((self._robot_config.LOWER_ANGLE_JOINT,
                                          -self._robot_config.VELOCITY_LIMITS,
                                          np.array([-1.0]*4),
-                                         -np.pi/180*np.array([30, 30, 60]),
-                                         -np.array([3.5, 3.5, 3.5]))) -  OBSERVATION_EPS)
+                                         -np.pi/180*np.array([10, 10, 10]),
+                                         -np.array([1, 1, 1]))) -  OBSERVATION_EPS)
     else:
       raise ValueError("observation space not defined or not intended")
 
@@ -485,7 +485,7 @@ class QuadrupedGymEnv(gym.Env):
 
     # integrate CPG, get mapping to foot positions
     xs,zs = self._cpg.update()
-
+    
     # IK parameters
     foot_y = self._robot_config.HIP_LINK_LENGTH
     sideSign = np.array([-1, 1, -1, 1]) # get correct hip sign (body right is negative)
