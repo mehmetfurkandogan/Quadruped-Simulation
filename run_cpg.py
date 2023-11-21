@@ -63,9 +63,10 @@ env = QuadrupedGymEnv(render=True,              # visualize
 
 # initialize Hopf Network, supply gait
 cpg = HopfNetwork(time_step=TIME_STEP, 
-                  omega_swing = 8*2*np.pi, 
-                  omega_stance = 5*2*np.pi,
-                  gait = "WALK")
+                  omega_swing = 5*2*np.pi, 
+                  omega_stance = 2*2*np.pi,
+                  gait = "PACE",
+                  mu = 1**2)
 
 TEST_STEPS = int(10 / (TIME_STEP))
 t = np.arange(TEST_STEPS)*TIME_STEP
@@ -79,7 +80,7 @@ kp=np.array([100,100,100])
 kd=np.array([2,2,2])
 # Cartesian PD gains
 kpCartesian = np.diag([500]*3)
-kdCartesian = np.diag([20]*3)
+kdCartesian = np.diag([20]*3) #10
 
 for j in range(TEST_STEPS):
   # initialize torque array to send to motors
@@ -101,7 +102,7 @@ for j in range(TEST_STEPS):
     leg_q = env.robot.ComputeInverseKinematics(i, leg_xyz) # [TODO] 
     # Add joint PD contribution to tau for leg i (Equation 4)
 
-    tau = kp@(leg_q - q[3*i:3*(i+1)]) + kd@(-dq[3*i:3*(i+1)]) # [TODO] 
+    tau += kp*(leg_q - q[3*i:3*(i+1)]) + kd*(-dq[3*i:3*(i+1)]) # [TODO] 
 
     # add Cartesian PD contribution
     if ADD_CARTESIAN_PD:

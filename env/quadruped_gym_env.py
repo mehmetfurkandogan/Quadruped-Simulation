@@ -219,21 +219,31 @@ class QuadrupedGymEnv(gym.Env):
                                          np.array([1.0]*4))) +  OBSERVATION_EPS)
       observation_low = (np.concatenate((self._robot_config.LOWER_ANGLE_JOINT,
                                          -self._robot_config.VELOCITY_LIMITS,
-                                         np.array([-1.0]*4))) -  OBSERVATION_EPS)
+                                         np.array([-1.0]*4))))
     elif self._observation_space_mode == "LR_COURSE_OBS":
       # [TODO] Set observation upper and lower ranges. What are reasonable limits? 
       # Note 50 is arbitrary below, you may have more or less
       # if using CPG-RL, remember to include limits on these
       observation_high = (np.concatenate((self._robot_config.UPPER_ANGLE_JOINT,
                                          self._robot_config.VELOCITY_LIMITS,
+<<<<<<< Updated upstream
                                          np.array([1.0]*4), 
+=======
+                                         np.array([1.0]*4)  +  OBSERVATION_EPS, 
+>>>>>>> Stashed changes
                                          np.pi/180*np.array([10, 10, 10]),
                                          np.array([1, 1, 1]))) +  OBSERVATION_EPS)
       observation_low = (np.concatenate((self._robot_config.LOWER_ANGLE_JOINT,
                                          -self._robot_config.VELOCITY_LIMITS,
+<<<<<<< Updated upstream
                                          np.array([-1.0]*4),
                                          -np.pi/180*np.array([10, 10, 10]),
                                          -np.array([1, 1, 1]))) -  OBSERVATION_EPS)
+=======
+                                         np.array([-1.0]*4)  - OBSERVATION_EPS,
+                                         -np.pi/180*np.array([10, 10, 10]),
+                                         -np.array([1, 1, 1]))))
+>>>>>>> Stashed changes
     else:
       raise ValueError("observation space not defined or not intended")
 
@@ -457,7 +467,7 @@ class QuadrupedGymEnv(gym.Env):
       # [TODO]
       J, pos = self.robot.ComputeJacobianAndPosition(i)
       # desired foot position i (from RL above)
-      Pd = des_foot_pos[i] # [TODO]
+      Pd = des_foot_pos[3*i:3*i+3] # [TODO]
       # desired foot velocity i
       vd = np.zeros(3) 
       # foot velocity in leg frame i (Equation 2)

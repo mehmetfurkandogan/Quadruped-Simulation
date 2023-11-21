@@ -102,6 +102,7 @@ class HopfNetwork():
     for i in range(4):
       for j in range(4):
         PHI[i,j] = legs[i] - legs[j]
+
     return 2*np.pi*PHI
 
   def _set_gait(self,gait):
