@@ -226,24 +226,14 @@ class QuadrupedGymEnv(gym.Env):
       # if using CPG-RL, remember to include limits on these
       observation_high = (np.concatenate((self._robot_config.UPPER_ANGLE_JOINT,
                                          self._robot_config.VELOCITY_LIMITS,
-<<<<<<< Updated upstream
-                                         np.array([1.0]*4), 
-=======
                                          np.array([1.0]*4)  +  OBSERVATION_EPS, 
->>>>>>> Stashed changes
                                          np.pi/180*np.array([10, 10, 10]),
                                          np.array([1, 1, 1]))) +  OBSERVATION_EPS)
       observation_low = (np.concatenate((self._robot_config.LOWER_ANGLE_JOINT,
                                          -self._robot_config.VELOCITY_LIMITS,
-<<<<<<< Updated upstream
-                                         np.array([-1.0]*4),
-                                         -np.pi/180*np.array([10, 10, 10]),
-                                         -np.array([1, 1, 1]))) -  OBSERVATION_EPS)
-=======
                                          np.array([-1.0]*4)  - OBSERVATION_EPS,
                                          -np.pi/180*np.array([10, 10, 10]),
                                          -np.array([1, 1, 1]))))
->>>>>>> Stashed changes
     else:
       raise ValueError("observation space not defined or not intended")
 
@@ -382,7 +372,7 @@ class QuadrupedGymEnv(gym.Env):
     """ Implement your reward function here. How will you improve upon the above? """
     # [TODO] add your reward function. 
     vel_tracking_reward = 3 * np.exp(-np.linalg.norm((self.robot.GetBaseLinearVelocity()[0:2] - np.array([des_vel,0])))**2)
-    ang_vel_penalty = 3 * np.exp(-1.5*(self.robot.GetBaseLinearVelocity()[2])**2)
+    ang_vel_reward = 3 * np.exp(-1.5*(self.robot.GetBaseAngularVelocity()[2])**2)
     orientation_penalty = -3 * np.abs(self.robot.GetBaseOrientationRollPitchYaw()[2])**2
     drift_penalty = -0.1 * np.abs(self.robot.GetBasePosition()[1]) 
     energy_penalty = 0 
@@ -398,14 +388,15 @@ class QuadrupedGymEnv(gym.Env):
       clearance_penalty += - 15 * ((pos[2] - 0.1)**2) * np.linalg.norm((J@self.robot.GetMotorVelocities()[3*i: 3*i + 3])[0:2])**2
 
     base_motion_penalty = -1.5 * (0.8*self.robot.GetBaseLinearVelocity()[2]**2 + np.abs(0.2*self.robot.GetBaseAngularVelocity()[0]) + np.abs(0.2*self.robot.GetBaseAngularVelocity()[1]))
+    c_scale = 0 if self._time_step < 0.75*10**5 else (self._time_step - 0.75*10**5)/(1.25*10**5) if self._time_step < 2*10**5 else 1 
     reward = vel_tracking_reward \
-            + orientation_penalty \
-            + drift_penalty \
-            - 0.01 * energy_penalty \
-            + slip_penalty \
-            + clearance_penalty \
-            + base_motion_penalty \
-            + ang_vel_penalty
+            + c_scale * orientation_penalty \
+            + c_scale * drift_penalty \
+            - 0.01 * c_scale * energy_penalty \
+            + c_scale * slip_penalty \
+            + c_scale * clearance_penalty \
+            + c_scale * base_motion_penalty \
+            + ang_vel_reward
 
     return max(reward, 0)
 
@@ -495,7 +486,7 @@ class QuadrupedGymEnv(gym.Env):
 
     # integrate CPG, get mapping to foot positions
     xs,zs = self._cpg.update()
-    
+
     # IK parameters
     foot_y = self._robot_config.HIP_LINK_LENGTH
     sideSign = np.array([-1, 1, -1, 1]) # get correct hip sign (body right is negative)
