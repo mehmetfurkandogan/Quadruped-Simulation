@@ -219,7 +219,7 @@ class QuadrupedGymEnv(gym.Env):
                                          np.array([1.0]*4))) +  OBSERVATION_EPS)
       observation_low = (np.concatenate((self._robot_config.LOWER_ANGLE_JOINT,
                                          -self._robot_config.VELOCITY_LIMITS,
-                                         np.array([-1.0]*4))))
+                                         np.array([-1.0]*4))) - OBSERVATION_EPS)
     elif self._observation_space_mode == "LR_COURSE_OBS":
       # [TODO] Set observation upper and lower ranges. What are reasonable limits? 
       # Note 50 is arbitrary below, you may have more or less
@@ -228,7 +228,7 @@ class QuadrupedGymEnv(gym.Env):
                                          self._robot_config.VELOCITY_LIMITS,
                                          np.array([1.0]*4)  +  OBSERVATION_EPS, 
                                          np.pi/180*np.array([10, 10, 10]),
-                                         np.array([1, 1, 1]))) +  OBSERVATION_EPS)
+                                         np.array([1, 1, 1]))))
       observation_low = (np.concatenate((self._robot_config.LOWER_ANGLE_JOINT,
                                          -self._robot_config.VELOCITY_LIMITS,
                                          np.array([-1.0]*4)  - OBSERVATION_EPS,
@@ -388,7 +388,7 @@ class QuadrupedGymEnv(gym.Env):
       clearance_penalty += - 15 * ((pos[2] - 0.1)**2) * np.linalg.norm((J@self.robot.GetMotorVelocities()[3*i: 3*i + 3])[0:2])**2
 
     base_motion_penalty = -1.5 * (0.8*self.robot.GetBaseLinearVelocity()[2]**2 + np.abs(0.2*self.robot.GetBaseAngularVelocity()[0]) + np.abs(0.2*self.robot.GetBaseAngularVelocity()[1]))
-    c_scale = 0 if self._time_step < 0.75*10**5 else (self._time_step - 0.75*10**5)/(1.25*10**5) if self._time_step < 2*10**5 else 1 
+    c_scale = 0 if self._time_step < 0.5*10**5 else (self._time_step - 0.5*10**5)/(1.5*10**5) if self._time_step < 2*10**5 else 1 
     reward = vel_tracking_reward \
             + c_scale * orientation_penalty \
             + c_scale * drift_penalty \
