@@ -219,7 +219,7 @@ class QuadrupedGymEnv(gym.Env):
                                          np.array([1.0]*4))) +  OBSERVATION_EPS)
       observation_low = (np.concatenate((self._robot_config.LOWER_ANGLE_JOINT,
                                          -self._robot_config.VELOCITY_LIMITS,
-                                         np.array([-1.0]*4))))
+                                         np.array([-1.0]*4))) - OBSERVATION_EPS)
     elif self._observation_space_mode == "LR_COURSE_OBS":
       # [TODO] Set observation upper and lower ranges. What are reasonable limits? 
       # Note 50 is arbitrary below, you may have more or less
