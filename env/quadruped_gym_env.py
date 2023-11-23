@@ -183,6 +183,7 @@ class QuadrupedGymEnv(gym.Env):
 
     # other bookkeeping 
     self._num_bullet_solver_iterations = int(300 / action_repeat) 
+    self._prev_env_step = 0
     self._env_step_counter = 0
     self._sim_step_counter = 0
     self._last_base_position = [0, 0, 0]
@@ -419,18 +420,30 @@ class QuadrupedGymEnv(gym.Env):
       J, pos = self.robot.ComputeJacobianAndPosition(i)
       slip_penalty += -0.08 * foot_contact_bool[i] * np.linalg.norm((J@self.robot.GetMotorVelocities()[3*i:3*i+3])[0:2])**2
       clearance_penalty += -15 * ((pos[2] - 0.1)**2) * np.linalg.norm((J@self.robot.GetMotorVelocities()[3*i: 3*i + 3])[0:2])**2
-
+    abs_env_step = self._prev_env_step + self._env_step_counter
     base_motion_penalty = -3 * (0.8*self.robot.GetBaseLinearVelocity()[2]**2 + np.abs(0.2*self.robot.GetBaseAngularVelocity()[0]) + np.abs(0.2*self.robot.GetBaseAngularVelocity()[1]))
-    c_scale = 0 if self._time_step < 0.75*10**5 else (self._time_step - 0.75*10**5)/(1.25*10**5) if self._time_step < 2*10**5 else 1 
+    c_scale = 0 if abs_env_step < 0.75*10**5 else (abs_env_step - 0.75*10**5)/(1.25*10**5) if abs_env_step < 2*10**5 else 1 
     reward = vel_tracking_reward \
             + Rair_sum \
             + c_scale * orientation_penalty \
             + c_scale * drift_penalty \
             - 0.01 * c_scale * energy_penalty \
             + c_scale * slip_penalty \
-            + clearance_penalty \
+            + c_scale * clearance_penalty \
             + c_scale * base_motion_penalty \
             + ang_vel_reward
+
+    print(abs_env_step , " " , self._env_step_counter , " ", self._prev_env_step)
+    if self._env_step_counter % 1000 == 0:
+      print(vel_tracking_reward)
+      print(Rair_sum)
+      print(orientation_penalty)
+      print(drift_penalty)
+      print(energy_penalty)
+      print(slip_penalty)
+      print(clearance_penalty)
+      print(base_motion_penalty)
+      print(ang_vel_reward)
 
     return max(reward, 0)
 
@@ -639,6 +652,7 @@ class QuadrupedGymEnv(gym.Env):
       self.robot.Reset(reload_urdf=False)
 
     self.setupCPG()
+    self._prev_env_step += self._env_step_counter
     self._env_step_counter = 0
     self._sim_step_counter = 0
     self._last_base_position = [0, 0, 0]
