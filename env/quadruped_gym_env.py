@@ -411,7 +411,7 @@ class QuadrupedGymEnv(gym.Env):
         Ts[idx] = 0
       else:
         Ts[idx] += self._time_step
-      Rair[idx] = 5 * min(Ts[idx],0.2) if Ts[idx] < 0.25 else 0
+      Rair[idx] = 30 * min(Ts[idx],0.2) if Ts[idx] < 0.25 else 0
     Rair_sum = sum(Rair)
   
     slip_penalty = 0
