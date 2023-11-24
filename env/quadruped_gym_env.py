@@ -422,9 +422,9 @@ class QuadrupedGymEnv(gym.Env):
       clearance_penalty += -15 * ((pos[2] - 0.1)**2) * np.linalg.norm((J@self.robot.GetMotorVelocities()[3*i: 3*i + 3])[0:2])**0.5
     abs_env_step = self._prev_env_step + self._env_step_counter
     base_motion_penalty = -3 * (0.8*self.robot.GetBaseLinearVelocity()[2]**2 + np.abs(0.2*self.robot.GetBaseAngularVelocity()[0]) + np.abs(0.2*self.robot.GetBaseAngularVelocity()[1]))
-    c_scale = 0 if abs_env_step < 0.75*10**5 else (abs_env_step - 0.75*10**5)/(1.25*10**5) if abs_env_step < 2*10**5 else 1 
+    c_scale = abs_env_step / 10**6 
     reward = vel_tracking_reward \
-            + Rair_sum \
+            + c_scale * Rair_sum \
             + c_scale * orientation_penalty \
             + c_scale * drift_penalty \
             - 0.01 * c_scale * energy_penalty \
