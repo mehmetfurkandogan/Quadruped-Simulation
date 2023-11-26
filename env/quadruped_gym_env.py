@@ -412,7 +412,7 @@ class QuadrupedGymEnv(gym.Env):
         self.Ts[idx] = 0
       else:
         self.Ts[idx] = self._env_step_counter
-      Rair[idx] =  - 0.005 * min(self.Ts[idx],700) if self.Ts[idx] > 500 else 0
+      Rair[idx] =  0.005 * min(self.Ts[idx], 350) if self.Ts[idx] < 500 else 0
     
     Rair_sum = sum(Rair)
     slip_penalty = 0
