@@ -65,7 +65,7 @@ env = QuadrupedGymEnv(render=True,              # visualize
 cpg = HopfNetwork(time_step=TIME_STEP, 
                   omega_swing = 5*2*np.pi, 
                   omega_stance = 2*2*np.pi,
-                  gait = "PACE",
+                  gait = "WALK",
                   mu = 1**2)
 
 TEST_STEPS = int(10 / (TIME_STEP))

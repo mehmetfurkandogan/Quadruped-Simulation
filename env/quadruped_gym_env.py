@@ -190,7 +190,7 @@ class QuadrupedGymEnv(gym.Env):
     self._last_frame_time = 0.0 # for rendering 
     self._MAX_EP_LEN = EPISODE_LENGTH # max sim time in seconds, arbitrary
     self._action_bound = 1.0
-
+    self.Ts = [0,0,0,0]
     # if using CPG
     self.setupCPG()
 
@@ -389,9 +389,9 @@ class QuadrupedGymEnv(gym.Env):
     
     return max(reward,0) # keep rewards positive
   
-  global Ts
-  Ts = [0,0,0,0]
+  
   def _reward_lr_course(self, des_vel = 1):
+    global Ts
     """ Implement your reward function here. How will you improve upon the above? """
     # [TODO] add your reward function. 
     vel_tracking_reward = 6* np.exp(-np.linalg.norm((self.robot.GetBaseLinearVelocity()[0:2] - np.array([des_vel,0])))**2)
@@ -406,12 +406,13 @@ class QuadrupedGymEnv(gym.Env):
     __, __, __, foot_contact_bool = self.robot.GetContactInfo()
 
     Rair = [0,0,0,0]
+
     for idx,i in enumerate(foot_contact_bool):
       if i == 1:
-        Ts[idx] = 0
+        self.Ts[idx] = 0
       else:
-        Ts[idx] += self._env_step_counter
-      Rair[idx] = 0.01 * min(Ts[idx],200) if Ts[idx] < 500 else 0
+        self.Ts[idx] = self._env_step_counter
+      Rair[idx] =  - 0.005 * min(self.Ts[idx],700) if self.Ts[idx] > 500 else 0
     
     Rair_sum = sum(Rair)
     slip_penalty = 0
@@ -427,7 +428,7 @@ class QuadrupedGymEnv(gym.Env):
     base_motion_penalty = -3 * (0.8*self.robot.GetBaseLinearVelocity()[2]**2 + np.abs(0.2*self.robot.GetBaseAngularVelocity()[0]) + np.abs(0.2*self.robot.GetBaseAngularVelocity()[1]))
     c_scale = abs_env_step/(8*10**5) if abs_env_step < 8*10**5 else 1
     reward = vel_tracking_reward \
-            + c_scale * Rair_sum \
+            + Rair_sum \
             + c_scale * orientation_penalty \
             + c_scale * drift_penalty \
             - 0.01 * c_scale * energy_penalty \
@@ -448,7 +449,7 @@ class QuadrupedGymEnv(gym.Env):
       print(base_motion_penalty)
       print(ang_vel_reward)
       print(base_pos_penalty)
-      print("Ts = " , Ts)
+      print("Ts = " , self.Ts)
 
     return max(reward, 0)
 
@@ -661,6 +662,7 @@ class QuadrupedGymEnv(gym.Env):
     self._env_step_counter = 0
     self._sim_step_counter = 0
     self._last_base_position = [0, 0, 0]
+    self.Ts = [0,0,0,0]
 
     if self._is_render:
       self._pybullet_client.resetDebugVisualizerCamera(self._cam_dist, self._cam_yaw,
