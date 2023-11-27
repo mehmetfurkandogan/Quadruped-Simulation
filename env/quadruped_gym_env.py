@@ -388,7 +388,14 @@ class QuadrupedGymEnv(gym.Env):
             + c_scale * base_motion_penalty  
     
     return max(reward,0) # keep rewards positive
-  
+
+  def _normalize_rewards(self, rewards):
+
+    mean_reward = np.mean(rewards)
+    std_reward = np.std(rewards)
+    normalized_rewards = (rewards - mean_reward) / (std_reward + 1e-8) 
+
+    return normalized_rewards
   
   def _reward_lr_course(self, des_vel = 1):
     global Ts
@@ -413,7 +420,7 @@ class QuadrupedGymEnv(gym.Env):
       else:
         self.Ts[idx] += 1
       Rair[idx] =  0.01 * min(self.Ts[idx], 350) if self.Ts[idx] < 500 else 0
-    
+    num_of_contact = 0
     Rair_sum = sum(Rair)
     slip_penalty = 0
     clearance_penalty = 0
@@ -421,12 +428,21 @@ class QuadrupedGymEnv(gym.Env):
       J, pos = self.robot.ComputeJacobianAndPosition(i)
       slip_penalty += -0.08 * foot_contact_bool[i] * np.linalg.norm((J@self.robot.GetMotorVelocities()[3*i:3*i+3])[0:2])**2
       clearance_penalty += -20 * ((pos[2] + 0.18)**2) if foot_contact_bool[i] == 0 else 0
+      num_of_contact += foot_contact_bool[i]
 
     base_pos_penalty = -25 * ((self.robot.GetBasePosition()[2] - 0.32)**2)
 
     abs_env_step = self._prev_env_step + self._env_step_counter
     base_motion_penalty = -3 * (0.8*self.robot.GetBaseLinearVelocity()[2]**2 + np.abs(0.2*self.robot.GetBaseAngularVelocity()[0]) + np.abs(0.2*self.robot.GetBaseAngularVelocity()[1]))
     c_scale = abs_env_step/(2*10**5) if abs_env_step < 2*10**5 else 1
+
+    rewards_list = [vel_tracking_reward, Rair_sum, c_scale * orientation_penalty, 
+    c_scale *drift_penalty, -0.01*c_scale *energy_penalty, c_scale * slip_penalty, clearance_penalty, 
+    c_scale *base_motion_penalty, ang_vel_reward, c_scale *base_pos_penalty]
+    
+    '''normalized_rewards_list =self. _normalize_rewards(rewards_list)
+    reward =  sum(normalized_rewards_list)'''
+
     reward = vel_tracking_reward \
             + Rair_sum \
             + c_scale * orientation_penalty \
@@ -438,19 +454,15 @@ class QuadrupedGymEnv(gym.Env):
             + ang_vel_reward \
             + c_scale * base_pos_penalty
 
-    if abs_env_step % 1000 == 0:
-      print(vel_tracking_reward)
-      print(Rair_sum)
-      print(orientation_penalty)
-      print(drift_penalty)
-      print(energy_penalty)
-      print(slip_penalty)
-      print(clearance_penalty)
-      print(base_motion_penalty)
-      print(ang_vel_reward)
-      print(base_pos_penalty)
-      print("Ts = " , self.Ts)
 
+    if abs_env_step % 1000 == 0:
+      print("vel_tracking_reward, Rair_sum, c_scale * orientation_penalty," 
+        "c_scale *drift_penalty, -0.01*c_scale *energy_penalty, c_scale * slip_penalty, clearance_penalty," 
+        "c_scale *base_motion_penalty, ang_vel_reward, c_scale *base_pos_penalty")
+      print(rewards_list)
+
+    if num_of_contact < 2:
+      return 0
     return max(reward, 0)
 
   def _reward(self):
