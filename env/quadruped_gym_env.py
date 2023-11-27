@@ -191,6 +191,7 @@ class QuadrupedGymEnv(gym.Env):
     self._MAX_EP_LEN = EPISODE_LENGTH # max sim time in seconds, arbitrary
     self._action_bound = 1.0
     self.Ts = [0,0,0,0]
+    self.prev_position = 0 
     # if using CPG
     self.setupCPG()
 
@@ -423,6 +424,11 @@ class QuadrupedGymEnv(gym.Env):
       
     num_of_contact = 0
 
+    current_position = self.robot.GetBasePosition()
+    forward_progress = current_position[0] - self.prev_position[0]
+    forward_progress_reward = 3 * forward_progress
+    self.prev_position = current_position
+    
     Rair_sum = sum(Rair)
     slip_penalty = 0
     clearance_penalty = 0
@@ -434,13 +440,16 @@ class QuadrupedGymEnv(gym.Env):
 
     base_pos_penalty = -25 * ((self.robot.GetBasePosition()[2] - 0.32)**2)
 
-    abs_env_step = self._prev_env_step + self._env_step_counter
-    base_motion_penalty = -3 * (0.8*self.robot.GetBaseLinearVelocity()[2]**2 + np.abs(0.2*self.robot.GetBaseAngularVelocity()[0]) + np.abs(0.2*self.robot.GetBaseAngularVelocity()[1]))
-    c_scale = abs_env_step/(2*10**5) if abs_env_step < 2*10**5 else 1
+    stability_reward = 0.5 * (num_of_contact - 2)
 
-    rewards_list = [vel_tracking_reward, Rair_sum, c_scale * orientation_penalty, 
+    abs_env_step = self._prev_env_step + self._env_step_counter
+    
+    base_motion_penalty = -3 * (0.8*self.robot.GetBaseLinearVelocity()[2]**2 + np.abs(0.2*self.robot.GetBaseAngularVelocity()[0]) + np.abs(0.2*self.robot.GetBaseAngularVelocity()[1]))
+    c_scale = abs_env_step/(4*10**5) if abs_env_step < 4*10**5 else 1
+
+    '''rewards_list = [vel_tracking_reward, Rair_sum, c_scale * orientation_penalty, 
     c_scale *drift_penalty, -0.01*c_scale *energy_penalty, c_scale * slip_penalty, clearance_penalty, 
-    c_scale *base_motion_penalty, ang_vel_reward, c_scale *base_pos_penalty]
+    c_scale *base_motion_penalty, ang_vel_reward, c_scale *base_pos_penalty]'''
     
     '''normalized_rewards_list =self. _normalize_rewards(rewards_list)
     reward =  sum(normalized_rewards_list)'''
@@ -454,7 +463,9 @@ class QuadrupedGymEnv(gym.Env):
             + c_scale * clearance_penalty \
             + c_scale * base_motion_penalty \
             + ang_vel_reward \
-            + c_scale * base_pos_penalty
+            + c_scale * base_pos_penalty \
+            + stability_reward \
+            + forward_progress_reward
 
 
     if abs_env_step % 1000 == 0:
@@ -468,8 +479,8 @@ class QuadrupedGymEnv(gym.Env):
       print("base_motion_penalty:", c_scale * base_motion_penalty)
       print("ang_vel_reward:", ang_vel_reward)
       print("base_pos_penalty:", c_scale * base_pos_penalty)
-
-
+      print("stability reward:", stability_reward)
+      print("forward progress reward:", forward_progress_reward)
     '''if num_of_contact < 2:
       return 0'''
 
@@ -653,6 +664,7 @@ class QuadrupedGymEnv(gym.Env):
                                          motor_control_mode=self._motor_control_mode,
                                          on_rack=self._on_rack,
                                          render=self._is_render))
+      self.prev_position = self.robot.GetBasePosition()
       if self._using_competition_env:
         self._ground_mu_k = ground_mu_k = 0.8
         self._pybullet_client.changeDynamics(self.plane, -1, lateralFriction=ground_mu_k)
