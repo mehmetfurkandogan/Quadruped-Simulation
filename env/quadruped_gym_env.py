@@ -419,8 +419,10 @@ class QuadrupedGymEnv(gym.Env):
         self.Ts[idx] = 0
       else:
         self.Ts[idx] += 1
-      Rair[idx] =  0.01 * min(self.Ts[idx], 350) if self.Ts[idx] < 500 else 0
+      Rair[idx] =  0.1 * min(self.Ts[idx], 35) if self.Ts[idx] < 50 else 0
+      
     num_of_contact = 0
+
     Rair_sum = sum(Rair)
     slip_penalty = 0
     clearance_penalty = 0
@@ -449,7 +451,7 @@ class QuadrupedGymEnv(gym.Env):
             + c_scale * drift_penalty \
             - 0.01 * c_scale * energy_penalty \
             + c_scale * slip_penalty \
-            + clearance_penalty \
+            + c_scale * clearance_penalty \
             + c_scale * base_motion_penalty \
             + ang_vel_reward \
             + c_scale * base_pos_penalty
@@ -468,9 +470,9 @@ class QuadrupedGymEnv(gym.Env):
       print("base_pos_penalty:", c_scale * base_pos_penalty)
 
 
-    if num_of_contact < 2:
-      return 0
-      
+    '''if num_of_contact < 2:
+      return 0'''
+
     return max(reward, 0)
 
   def _reward(self):
