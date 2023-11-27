@@ -456,13 +456,21 @@ class QuadrupedGymEnv(gym.Env):
 
 
     if abs_env_step % 1000 == 0:
-      print("vel_tracking_reward, Rair_sum, c_scale * orientation_penalty," 
-        "c_scale *drift_penalty, -0.01*c_scale *energy_penalty, c_scale * slip_penalty, clearance_penalty," 
-        "c_scale *base_motion_penalty, ang_vel_reward, c_scale *base_pos_penalty")
-      print(rewards_list)
+      print("vel_tracking_reward:", vel_tracking_reward)
+      print("Rair_sum:", Rair_sum)
+      print("orientation_penalty:", c_scale * orientation_penalty)
+      print("drift_penalty:", c_scale * drift_penalty)
+      print("energy_penalty:", -0.01 * c_scale * energy_penalty)
+      print("slip_penalty:", c_scale * slip_penalty)
+      print("clearance_penalty:", clearance_penalty)
+      print("base_motion_penalty:", c_scale * base_motion_penalty)
+      print("ang_vel_reward:", ang_vel_reward)
+      print("base_pos_penalty:", c_scale * base_pos_penalty)
+
 
     if num_of_contact < 2:
       return 0
+      
     return max(reward, 0)
 
   def _reward(self):
