@@ -411,8 +411,8 @@ class QuadrupedGymEnv(gym.Env):
       if i == 1:
         self.Ts[idx] = 0
       else:
-        self.Ts[idx] = self._env_step_counter
-      Rair[idx] =  0.005 * min(self.Ts[idx], 350) if self.Ts[idx] < 500 else 0
+        self.Ts[idx] += 1
+      Rair[idx] =  0.01 * min(self.Ts[idx], 350) if self.Ts[idx] < 500 else 0
     
     Rair_sum = sum(Rair)
     slip_penalty = 0
@@ -420,20 +420,20 @@ class QuadrupedGymEnv(gym.Env):
     for i in range(4):
       J, pos = self.robot.ComputeJacobianAndPosition(i)
       slip_penalty += -0.08 * foot_contact_bool[i] * np.linalg.norm((J@self.robot.GetMotorVelocities()[3*i:3*i+3])[0:2])**2
-      clearance_penalty += -20 * ((pos[2] + 0.18)**2)
+      clearance_penalty += -20 * ((pos[2] + 0.18)**2) if foot_contact_bool[i] == 0 else 0
 
     base_pos_penalty = -25 * ((self.robot.GetBasePosition()[2] - 0.32)**2)
 
     abs_env_step = self._prev_env_step + self._env_step_counter
     base_motion_penalty = -3 * (0.8*self.robot.GetBaseLinearVelocity()[2]**2 + np.abs(0.2*self.robot.GetBaseAngularVelocity()[0]) + np.abs(0.2*self.robot.GetBaseAngularVelocity()[1]))
-    c_scale = abs_env_step/(8*10**5) if abs_env_step < 8*10**5 else 1
+    c_scale = abs_env_step/(2*10**5) if abs_env_step < 2*10**5 else 1
     reward = vel_tracking_reward \
             + Rair_sum \
             + c_scale * orientation_penalty \
             + c_scale * drift_penalty \
             - 0.01 * c_scale * energy_penalty \
             + c_scale * slip_penalty \
-            + c_scale * clearance_penalty \
+            + clearance_penalty \
             + c_scale * base_motion_penalty \
             + ang_vel_reward \
             + c_scale * base_pos_penalty

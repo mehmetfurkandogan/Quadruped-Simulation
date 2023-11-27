@@ -58,7 +58,7 @@ from utils.file_utils import get_latest_model, load_all_results
 LEARNING_ALG = "SAC"
 interm_dir = "./logs/intermediate_models/"
 # path to saved models, i.e. interm_dir + '121321105810'
-log_dir = interm_dir + '112623171421'
+log_dir = interm_dir + '112623213917'
 
 # initialize env configs (render at test time)
 # check ideal conditions, as well as robustness to UNSEEN noise during training
@@ -66,7 +66,7 @@ env_config = {}
 env_config['render'] = True
 env_config['record_video'] = False
 env_config['add_noise'] = False 
-env_config['motor_control_mode'] = "CARTESIAN_PD"
+env_config['motor_control_mode'] = "PD"
 env_config['observation_space_mode'] = "LR_COURSE_OBS"
 env_config['task_env'] = "LR_COURSE_TASK"
 # env_config['test_env'] = True
@@ -104,10 +104,11 @@ for i in range(2000):
     obs, rewards, dones, info = env.step(action)
     episode_reward += rewards
     J, pos = env.envs[0].env.robot.ComputeJacobianAndPosition(2)
-    print("foot pos: ")
+    '''print("foot pos: ")
     print(pos[2])
     print("base pos: ")
-    print(env.envs[0].env.robot.GetBasePosition()[2])
+    print(env.envs[0].env.robot.GetBasePosition()[2])'''
+    print(env.envs[0].Ts)
     if dones:
         print('episode_reward', episode_reward)
         print('Final base position', info[0]['base_pos'])
