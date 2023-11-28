@@ -108,7 +108,7 @@ for i in range(2000):
     # print("foot pos: ")
     # print(pos[2])
     # print("base pos: ")
-    # print(env.envs[0].env.robot.GetBasePosition()[2])
+    print(env.envs[0].env.Ts)
     if dones:
         print('episode_reward', episode_reward)
         print('Final base position', info[0]['base_pos'])
