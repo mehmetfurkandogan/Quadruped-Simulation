@@ -191,7 +191,6 @@ class QuadrupedGymEnv(gym.Env):
     self._MAX_EP_LEN = EPISODE_LENGTH # max sim time in seconds, arbitrary
     self._action_bound = 1.0
     self.Ts = [0,0,0,0]
-    self.prev_position = 0 
     # if using CPG
     self.setupCPG()
 
@@ -229,12 +228,12 @@ class QuadrupedGymEnv(gym.Env):
       observation_high = (np.concatenate((self._robot_config.UPPER_ANGLE_JOINT,
                                          self._robot_config.VELOCITY_LIMITS,
                                          np.array([1.0]*4)  +  OBSERVATION_EPS, 
-                                         np.pi/180*np.array([90, 90, 90]),
+                                         np.pi/180*np.array([50, 50, 50]),
                                          np.array([1.5, 1.5, 1.5]))))
       observation_low = (np.concatenate((self._robot_config.LOWER_ANGLE_JOINT,
                                          -self._robot_config.VELOCITY_LIMITS,
                                          np.array([-1.0]*4)  - OBSERVATION_EPS,
-                                         -np.pi/180*np.array([90, 90, 90]),
+                                         -np.pi/180*np.array([50, 50, 50]),
                                          -np.array([1.5, 1.5, 1.5]))))
     else:
       raise ValueError("observation space not defined or not intended")
@@ -389,16 +388,9 @@ class QuadrupedGymEnv(gym.Env):
             + c_scale * base_motion_penalty  
     
     return max(reward,0) # keep rewards positive
-
-  def _normalize_rewards(self, rewards):
-
-    mean_reward = np.mean(rewards)
-    std_reward = np.std(rewards)
-    normalized_rewards = (rewards - mean_reward) / (std_reward + 1e-8) 
-
-    return normalized_rewards
   
-  def _reward_lr_course(self, des_vel = 1):
+  
+  def _reward_lr_course(self, des_vel = 0.5):
     global Ts
     """ Implement your reward function here. How will you improve upon the above? """
     # [TODO] add your reward function. 
@@ -419,15 +411,8 @@ class QuadrupedGymEnv(gym.Env):
       if i == 1:
         self.Ts[idx] = 0
       else:
-        self.Ts[idx] += 1
-      Rair[idx] =  0.1 * min(self.Ts[idx], 35) if self.Ts[idx] < 50 else 0
-      
-    num_of_contact = 0
-
-    current_position = self.robot.GetBasePosition()
-    forward_progress = current_position[0] - self.prev_position[0]
-    forward_progress_reward = 3 * forward_progress
-    self.prev_position = current_position
+        self.Ts[idx] = self._env_step_counter
+      Rair[idx] =  0.005 * min(self.Ts[idx], 450) if self.Ts[idx] < 600 else 0
     
     Rair_sum = sum(Rair)
     slip_penalty = 0
@@ -435,25 +420,14 @@ class QuadrupedGymEnv(gym.Env):
     for i in range(4):
       J, pos = self.robot.ComputeJacobianAndPosition(i)
       slip_penalty += -0.08 * foot_contact_bool[i] * np.linalg.norm((J@self.robot.GetMotorVelocities()[3*i:3*i+3])[0:2])**2
-      clearance_penalty += -20 * ((pos[2] + 0.18)**2) if foot_contact_bool[i] == 0 else 0
-      num_of_contact += foot_contact_bool[i]
+      clearance_penalty += -20 * ((pos[2] + 0.18)**2)
 
     base_pos_penalty = -25 * ((self.robot.GetBasePosition()[2] - 0.32)**2)
 
-    stability_reward = 0.5 * (num_of_contact - 2)
-
     abs_env_step = self._prev_env_step + self._env_step_counter
-    
     base_motion_penalty = -3 * (0.8*self.robot.GetBaseLinearVelocity()[2]**2 + np.abs(0.2*self.robot.GetBaseAngularVelocity()[0]) + np.abs(0.2*self.robot.GetBaseAngularVelocity()[1]))
-    c_scale = abs_env_step/(4*10**5) if abs_env_step < 4*10**5 else 1
-
-    '''rewards_list = [vel_tracking_reward, Rair_sum, c_scale * orientation_penalty, 
-    c_scale *drift_penalty, -0.01*c_scale *energy_penalty, c_scale * slip_penalty, clearance_penalty, 
-    c_scale *base_motion_penalty, ang_vel_reward, c_scale *base_pos_penalty]'''
-    
-    '''normalized_rewards_list =self. _normalize_rewards(rewards_list)
-    reward =  sum(normalized_rewards_list)'''
-
+    c_scale = abs_env_step/(8*10**5) if abs_env_step < 8*10**5 else 1
+    self._using_test_env = False if abs_env_step < 8*10**5 else True
     reward = vel_tracking_reward \
             + Rair_sum \
             + c_scale * orientation_penalty \
@@ -463,26 +437,20 @@ class QuadrupedGymEnv(gym.Env):
             + c_scale * clearance_penalty \
             + c_scale * base_motion_penalty \
             + ang_vel_reward \
-            + c_scale * base_pos_penalty \
-            + stability_reward \
-            + forward_progress_reward
-
+            + c_scale * base_pos_penalty
 
     if abs_env_step % 1000 == 0:
-      print("vel_tracking_reward:", vel_tracking_reward)
-      print("Rair_sum:", Rair_sum)
-      print("orientation_penalty:", c_scale * orientation_penalty)
-      print("drift_penalty:", c_scale * drift_penalty)
-      print("energy_penalty:", -0.01 * c_scale * energy_penalty)
-      print("slip_penalty:", c_scale * slip_penalty)
-      print("clearance_penalty:", clearance_penalty)
-      print("base_motion_penalty:", c_scale * base_motion_penalty)
-      print("ang_vel_reward:", ang_vel_reward)
-      print("base_pos_penalty:", c_scale * base_pos_penalty)
-      print("stability reward:", stability_reward)
-      print("forward progress reward:", forward_progress_reward)
-    '''if num_of_contact < 2:
-      return 0'''
+      print(vel_tracking_reward)
+      print(Rair_sum)
+      print(orientation_penalty)
+      print(drift_penalty)
+      print(energy_penalty)
+      print(slip_penalty)
+      print(clearance_penalty)
+      print(base_motion_penalty)
+      print(ang_vel_reward)
+      print(base_pos_penalty)
+      print("Ts = " , self.Ts)
 
     return max(reward, 0)
 
@@ -664,7 +632,6 @@ class QuadrupedGymEnv(gym.Env):
                                          motor_control_mode=self._motor_control_mode,
                                          on_rack=self._on_rack,
                                          render=self._is_render))
-      self.prev_position = self.robot.GetBasePosition()
       if self._using_competition_env:
         self._ground_mu_k = ground_mu_k = 0.8
         self._pybullet_client.changeDynamics(self.plane, -1, lateralFriction=ground_mu_k)
