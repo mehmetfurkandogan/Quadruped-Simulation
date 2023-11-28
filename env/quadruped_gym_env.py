@@ -429,7 +429,7 @@ class QuadrupedGymEnv(gym.Env):
     c_scale = abs_env_step/(8*10**5) if abs_env_step < 8*10**5 else 1
     self._using_test_env = False if abs_env_step < 8*10**5 else True
     reward = vel_tracking_reward \
-            + Rair_sum \
+            + c_scale * Rair_sum \
             + c_scale * orientation_penalty \
             + c_scale * drift_penalty \
             - 0.01 * c_scale * energy_penalty \
