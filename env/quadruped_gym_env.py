@@ -228,12 +228,12 @@ class QuadrupedGymEnv(gym.Env):
       observation_high = (np.concatenate((self._robot_config.UPPER_ANGLE_JOINT,
                                          self._robot_config.VELOCITY_LIMITS,
                                          np.array([1.0]*4)  +  OBSERVATION_EPS, 
-                                         np.pi/180*np.array([90, 90, 90]),
+                                         np.pi/180*np.array([50, 50, 50]),
                                          np.array([1.5, 1.5, 1.5]))))
       observation_low = (np.concatenate((self._robot_config.LOWER_ANGLE_JOINT,
                                          -self._robot_config.VELOCITY_LIMITS,
                                          np.array([-1.0]*4)  - OBSERVATION_EPS,
-                                         -np.pi/180*np.array([90, 90, 90]),
+                                         -np.pi/180*np.array([50, 50, 50]),
                                          -np.array([1.5, 1.5, 1.5]))))
     else:
       raise ValueError("observation space not defined or not intended")
@@ -390,7 +390,7 @@ class QuadrupedGymEnv(gym.Env):
     return max(reward,0) # keep rewards positive
   
   
-  def _reward_lr_course(self, des_vel = 1):
+  def _reward_lr_course(self, des_vel = 0.5):
     global Ts
     """ Implement your reward function here. How will you improve upon the above? """
     # [TODO] add your reward function. 
@@ -412,7 +412,7 @@ class QuadrupedGymEnv(gym.Env):
         self.Ts[idx] = 0
       else:
         self.Ts[idx] = self._env_step_counter
-      Rair[idx] =  0.005 * min(self.Ts[idx], 350) if self.Ts[idx] < 500 else 0
+      Rair[idx] =  0.005 * min(self.Ts[idx], 450) if self.Ts[idx] < 600 else 0
     
     Rair_sum = sum(Rair)
     slip_penalty = 0
@@ -427,6 +427,7 @@ class QuadrupedGymEnv(gym.Env):
     abs_env_step = self._prev_env_step + self._env_step_counter
     base_motion_penalty = -3 * (0.8*self.robot.GetBaseLinearVelocity()[2]**2 + np.abs(0.2*self.robot.GetBaseAngularVelocity()[0]) + np.abs(0.2*self.robot.GetBaseAngularVelocity()[1]))
     c_scale = abs_env_step/(8*10**5) if abs_env_step < 8*10**5 else 1
+    self._using_test_env = False if abs_env_step < 8*10**5 else True
     reward = vel_tracking_reward \
             + Rair_sum \
             + c_scale * orientation_penalty \
