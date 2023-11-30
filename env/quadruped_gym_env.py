@@ -390,14 +390,15 @@ class QuadrupedGymEnv(gym.Env):
     return max(reward,0) # keep rewards positive
   
   
-  def _reward_lr_course(self, des_vel = 0.5):
+  def _reward_lr_course(self, des_vel = 1):
     global Ts
     """ Implement your reward function here. How will you improve upon the above? """
     # [TODO] add your reward function. 
+    
     vel_tracking_reward = 6* np.exp(-np.linalg.norm((self.robot.GetBaseLinearVelocity()[0:2] - np.array([des_vel,0])))**2)
     ang_vel_reward = 3 * np.exp(-1.5*(self.robot.GetBaseAngularVelocity()[2])**2)
     orientation_penalty = -3 * np.abs(self.robot.GetBaseOrientationRollPitchYaw()[2])**2
-    drift_penalty = -0.1 * np.abs(self.robot.GetBasePosition()[1]) 
+    drift_penalty = -0.3 * np.abs(self.robot.GetBasePosition()[1]) 
     energy_penalty = 0 
     
     for tau,vel in zip(self._dt_motor_torques,self._dt_motor_velocities):
@@ -414,19 +415,19 @@ class QuadrupedGymEnv(gym.Env):
         self.Ts[idx] = self._env_step_counter
       Rair[idx] =  0.005 * min(self.Ts[idx], 450) if self.Ts[idx] < 600 else 0
     
-    Rair_sum = sum(Rair)
+    Rair_sum = sum(Rair) if np.count_nonzero(Rair) <= 2 else 0 
     slip_penalty = 0
     clearance_penalty = 0
     for i in range(4):
       J, pos = self.robot.ComputeJacobianAndPosition(i)
-      slip_penalty += -0.08 * foot_contact_bool[i] * np.linalg.norm((J@self.robot.GetMotorVelocities()[3*i:3*i+3])[0:2])**2
-      clearance_penalty += -20 * ((pos[2] + 0.18)**2)
+      slip_penalty += -0.25 * foot_contact_bool[i] * np.linalg.norm((J@self.robot.GetMotorVelocities()[3*i:3*i+3])[0:2])**2
+      clearance_penalty += -120 * ((pos[2] + 0.16)**2)
 
-    base_pos_penalty = -25 * ((self.robot.GetBasePosition()[2] - 0.32)**2)
+    base_pos_penalty = -35 * ((self.robot.GetBasePosition()[2] - 0.34)**2)
 
     abs_env_step = self._prev_env_step + self._env_step_counter
-    base_motion_penalty = -3 * (0.8*self.robot.GetBaseLinearVelocity()[2]**2 + np.abs(0.2*self.robot.GetBaseAngularVelocity()[0]) + np.abs(0.2*self.robot.GetBaseAngularVelocity()[1]))
-    c_scale = abs_env_step/(8*10**5) if abs_env_step < 8*10**5 else 1
+    base_motion_penalty = -8 * (0.8*self.robot.GetBaseLinearVelocity()[2]**2 + np.abs(0.2*self.robot.GetBaseAngularVelocity()[0]) + np.abs(0.2*self.robot.GetBaseAngularVelocity()[1]))
+    c_scale = abs_env_step/(3*10**5) if abs_env_step < 3*10**5 else 1
     self._using_test_env = False if abs_env_step < 8*10**5 else True
     reward = vel_tracking_reward \
             + c_scale * Rair_sum \
