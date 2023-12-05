@@ -235,6 +235,20 @@ class QuadrupedGymEnv(gym.Env):
                                          np.array([-1.0]*4)  - OBSERVATION_EPS,
                                          -np.pi/180*np.array([50, 50, 50]),
                                          -np.array([1.5, 1.5, 1.5]))))
+    elif self._observation_space_mode == "CPG_OBS":
+      # [TODO] Set observation upper and lower ranges. What are reasonable limits? 
+      # Note 50 is arbitrary below, you may have more or less
+      # if using CPG-RL, remember to include limits on these
+      observation_high = (np.concatenate((self._robot_config.UPPER_ANGLE_JOINT,
+                                         self._robot_config.VELOCITY_LIMITS,
+                                         np.array([1.0]*4)  +  OBSERVATION_EPS, 
+                                         np.pi/180*np.array([50, 50, 50]),
+                                         np.array([1.5, 1.5, 1.5]))))
+      observation_low = (np.concatenate((self._robot_config.LOWER_ANGLE_JOINT,
+                                         -self._robot_config.VELOCITY_LIMITS,
+                                         np.array([-1.0]*4)  - OBSERVATION_EPS,
+                                         -np.pi/180*np.array([50, 50, 50]),
+                                         -np.array([1.5, 1.5, 1.5]))))
     else:
       raise ValueError("observation space not defined or not intended")
 
@@ -268,6 +282,19 @@ class QuadrupedGymEnv(gym.Env):
                                     self.robot.GetBaseOrientation(),
                                     self.robot.GetBaseAngularVelocity(),
                                     self.robot.GetBaseLinearVelocity()))
+    elif self._observation_space_mode == "CPG_OBS":
+      # [TODO] Get observation from robot. What are reasonable measurements we could get on hardware?
+      # if using the CPG, you can include states with self._cpg.get_r(), for example
+      # 50 is arbitrary
+      self._observation = np.concatenate((self.robot.GetMotorAngles(), 
+                                    self.robot.GetMotorVelocities(),
+                                    self.robot.GetBaseOrientation(),
+                                    self.robot.GetBaseAngularVelocity(),
+                                    self.robot.GetBaseLinearVelocity(),
+                                    self._cpg.get_r(),
+                                    self._cpg.get_theta(),
+                                    self._cpg.get_dr(),
+                                    self._cpg.get_dtheta()))
 
     else:
       raise ValueError("observation space not defined or not intended")
@@ -405,16 +432,15 @@ class QuadrupedGymEnv(gym.Env):
   
     __, __, __, foot_contact_bool = self.robot.GetContactInfo()
 
-    Rair = [0,0,0,0]
+    Rair_sum = 0
 
     for idx,i in enumerate(foot_contact_bool):
       if i == 1:
+        Rair_sum +=  0.005 * min(self.Ts[idx], 350) if self.Ts[idx] < 500 else 0
         self.Ts[idx] = 0
       else:
-        self.Ts[idx] = self._env_step_counter
-      Rair[idx] =  0.005 * min(self.Ts[idx], 450) if self.Ts[idx] < 600 else 0
+        self.Ts[idx] += self._time_step*1000
     
-    Rair_sum = sum(Rair)
     slip_penalty = 0
     clearance_penalty = 0
     for i in range(4):
