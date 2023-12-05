@@ -416,7 +416,6 @@ class QuadrupedGymEnv(gym.Env):
     
     return max(reward,0) # keep rewards positive
   
-  
   def _reward_lr_course(self, des_vel = 0.5):
     global Ts
     """ Implement your reward function here. How will you improve upon the above? """
@@ -439,19 +438,26 @@ class QuadrupedGymEnv(gym.Env):
         Rair_sum +=  0.005 * min(self.Ts[idx], 350) if self.Ts[idx] < 500 else 0
         self.Ts[idx] = 0
       else:
+
         self.Ts[idx] += self._time_step*1000
+
     
     slip_penalty = 0
     clearance_penalty = 0
     for i in range(4):
       J, pos = self.robot.ComputeJacobianAndPosition(i)
       slip_penalty += -0.08 * foot_contact_bool[i] * np.linalg.norm((J@self.robot.GetMotorVelocities()[3*i:3*i+3])[0:2])**2
-      clearance_penalty += -20 * ((pos[2] + 0.18)**2)
+      clearance_penalty += -20 * ((pos[2] + 0.18)**2) if foot_contact_bool[i] == 0 else 0
+      num_of_contact += foot_contact_bool[i]
 
     base_pos_penalty = -25 * ((self.robot.GetBasePosition()[2] - 0.32)**2)
 
+    stability_reward = 0.5 * (num_of_contact - 2)
+
     abs_env_step = self._prev_env_step + self._env_step_counter
+    
     base_motion_penalty = -3 * (0.8*self.robot.GetBaseLinearVelocity()[2]**2 + np.abs(0.2*self.robot.GetBaseAngularVelocity()[0]) + np.abs(0.2*self.robot.GetBaseAngularVelocity()[1]))
+
     c_scale = abs_env_step/(8*10**5) if abs_env_step < 8*10**5 else 1
     self._using_test_env = False if abs_env_step < 8*10**5 else True
     reward = vel_tracking_reward \
@@ -463,20 +469,26 @@ class QuadrupedGymEnv(gym.Env):
             + c_scale * clearance_penalty \
             + c_scale * base_motion_penalty \
             + ang_vel_reward \
-            + c_scale * base_pos_penalty
+            + c_scale * base_pos_penalty \
+            + stability_reward \
+            + forward_progress_reward
+
 
     if abs_env_step % 1000 == 0:
-      print(vel_tracking_reward)
-      print(Rair_sum)
-      print(orientation_penalty)
-      print(drift_penalty)
-      print(energy_penalty)
-      print(slip_penalty)
-      print(clearance_penalty)
-      print(base_motion_penalty)
-      print(ang_vel_reward)
-      print(base_pos_penalty)
-      print("Ts = " , self.Ts)
+      print("vel_tracking_reward:", vel_tracking_reward)
+      print("Rair_sum:", Rair_sum)
+      print("orientation_penalty:", c_scale * orientation_penalty)
+      print("drift_penalty:", c_scale * drift_penalty)
+      print("energy_penalty:", -0.01 * c_scale * energy_penalty)
+      print("slip_penalty:", c_scale * slip_penalty)
+      print("clearance_penalty:", clearance_penalty)
+      print("base_motion_penalty:", c_scale * base_motion_penalty)
+      print("ang_vel_reward:", ang_vel_reward)
+      print("base_pos_penalty:", c_scale * base_pos_penalty)
+      print("stability reward:", stability_reward)
+      print("forward progress reward:", forward_progress_reward)
+    '''if num_of_contact < 2:
+      return 0'''
 
     return max(reward, 0)
 
