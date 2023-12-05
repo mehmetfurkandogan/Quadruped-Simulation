@@ -243,12 +243,20 @@ class QuadrupedGymEnv(gym.Env):
                                          self._robot_config.VELOCITY_LIMITS,
                                          np.array([1.0]*4)  +  OBSERVATION_EPS, 
                                          np.pi/180*np.array([50, 50, 50]),
-                                         np.array([1.5, 1.5, 1.5]))))
+                                         np.array([1.5, 1.5, 1.5]),
+                                         np.array([3, 3, 3, 3]),
+                                         np.array([10, 10, 10, 10]),
+                                         np.array([3, 3, 3, 3]),
+                                         np.array([45, 45, 45, 45]))))
       observation_low = (np.concatenate((self._robot_config.LOWER_ANGLE_JOINT,
                                          -self._robot_config.VELOCITY_LIMITS,
                                          np.array([-1.0]*4)  - OBSERVATION_EPS,
                                          -np.pi/180*np.array([50, 50, 50]),
-                                         -np.array([1.5, 1.5, 1.5]))))
+                                         -np.array([1.5, 1.5, 1.5]),
+                                         np.array([0, 0, 0, 0]),
+                                         np.array([0, 0, 0, 0]),
+                                         -np.array([3, 3, 3, 3]),
+                                         np.array([0, 0, 0, 0]))))
     else:
       raise ValueError("observation space not defined or not intended")
 
@@ -436,7 +444,7 @@ class QuadrupedGymEnv(gym.Env):
 
     for idx,i in enumerate(foot_contact_bool):
       if i == 1:
-        Rair_sum +=  0.005 * min(self.Ts[idx], 350) if self.Ts[idx] < 500 else 0
+        Rair_sum +=  0.05 * min(self.Ts[idx], 350) if self.Ts[idx] < 500 and self.Ts[idx] > 100 else 0
         self.Ts[idx] = 0
       else:
         self.Ts[idx] += self._time_step*1000

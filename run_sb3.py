@@ -57,7 +57,7 @@ USE_GPU = True
 
 env_configs = {"motor_control_mode":"CARTESIAN_PD",
                "task_env": "LR_COURSE_TASK", #  "LR_COURSE_TASK",
-               "observation_space_mode": "LR_COURSE_OBS"}
+               "observation_space_mode": "CPG_OBS"}
 
 
 if USE_GPU and LEARNING_ALG=="SAC":
