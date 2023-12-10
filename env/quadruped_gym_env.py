@@ -241,9 +241,7 @@ class QuadrupedGymEnv(gym.Env):
       # if using CPG-RL, remember to include limits on these
       observation_high = (np.concatenate((self._robot_config.UPPER_ANGLE_JOINT,
                                          self._robot_config.VELOCITY_LIMITS,
-                                         np.array([1.0]*4)  +  OBSERVATION_EPS, 
-                                         np.pi/180*np.array([50, 50, 50]),
-                                         np.array([1.5, 1.5, 1.5]),
+                                         np.array([1.0]*4)  +  OBSERVATION_EPS,
                                          np.array([3, 3, 3, 3]),
                                          np.array([10, 10, 10, 10]),
                                          np.array([3, 3, 3, 3]),
@@ -251,8 +249,6 @@ class QuadrupedGymEnv(gym.Env):
       observation_low = (np.concatenate((self._robot_config.LOWER_ANGLE_JOINT,
                                          -self._robot_config.VELOCITY_LIMITS,
                                          np.array([-1.0]*4)  - OBSERVATION_EPS,
-                                         -np.pi/180*np.array([50, 50, 50]),
-                                         -np.array([1.5, 1.5, 1.5]),
                                          np.array([0, 0, 0, 0]),
                                          np.array([0, 0, 0, 0]),
                                          -np.array([3, 3, 3, 3]),
@@ -297,8 +293,6 @@ class QuadrupedGymEnv(gym.Env):
       self._observation = np.concatenate((self.robot.GetMotorAngles(), 
                                     self.robot.GetMotorVelocities(),
                                     self.robot.GetBaseOrientation(),
-                                    self.robot.GetBaseAngularVelocity(),
-                                    self.robot.GetBaseLinearVelocity(),
                                     self._cpg.get_r(),
                                     self._cpg.get_theta(),
                                     self._cpg.get_dr(),
@@ -488,6 +482,27 @@ class QuadrupedGymEnv(gym.Env):
 
     return max(reward, 0)
 
+  def _reward_cpg(self, des_vel = 0.5):
+    """Learn forward locomotion at a desired velocity. """
+    # track the desired velocity 
+    vel_tracking_reward = 0.05 * np.exp( -1/ 0.25 *  (self.robot.GetBaseLinearVelocity()[0] - des_vel)**2)
+    # minimize yaw (go straight)
+    yaw_reward = -0.2 * np.abs(self.robot.GetBaseOrientationRollPitchYaw()[2]) 
+    # don't drift laterally 
+    drift_reward = -0.01 * abs(self.robot.GetBasePosition()[1]) 
+    # minimize energy 
+    energy_reward = 0 
+    for tau,vel in zip(self._dt_motor_torques,self._dt_motor_velocities):
+      energy_reward += np.abs(np.dot(tau,vel)) * self._time_step
+
+    reward = vel_tracking_reward \
+            + yaw_reward \
+            + drift_reward \
+            - 0.01 * energy_reward \
+            - 0.1 * np.linalg.norm(self.robot.GetBaseOrientation() - np.array([0,0,0,1]))
+
+    return max(reward,0) # keep rewards positive
+
   def _reward(self):
     """ Get reward depending on task"""
     if self._TASK_ENV == "FWD_LOCOMOTION":
@@ -496,6 +511,8 @@ class QuadrupedGymEnv(gym.Env):
       return self._reward_lr_course()
     elif self._TASK_ENV == "FLAGRUN":
       return self._reward_flag_run()
+    elif self._TASK_ENV == "CPG":
+      return self._reward_cpg()
     else:
       raise ValueError("This task mode not implemented yet.")
 
@@ -593,13 +610,21 @@ class QuadrupedGymEnv(gym.Env):
       y = sideSign[i] * foot_y # careful of sign
       z = zs[i]
 
+      J, pos = self.robot.ComputeJacobianAndPosition(i)
+      
+      leg_xyz = [x, y, z]
+
+      kpCartesian = self._robot_config.kpCartesian
+      kdCartesian = self._robot_config.kdCartesian
+
       # call inverse kinematics to get corresponding joint angles
       q_des = self.robot.ComputeInverseKinematics(i, np.array([x, y, z])) # [TODO]
       # Add joint PD contribution to tau
+      vel = J@dq[3*i:3*(i+1)]
       tau = kp[3*i:3*(i+1)]@(q_des - q[3*i:3*(i+1)]) + kd[3*i:3*(i+1)]@(-dq[3*i:3*(i+1)]) # [TODO] 
 
       # add Cartesian PD contribution (as you wish)
-      # tau += np.transpose(J)@(kpCartesian@(leg_xyz - pos) + kdCartesian@(-vel))
+      tau += np.transpose(J)@(kpCartesian@(leg_xyz - pos) + kdCartesian@(-vel))
 
       action[3*i:3*i+3] = tau
 
