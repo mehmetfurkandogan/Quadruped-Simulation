@@ -621,7 +621,7 @@ class QuadrupedGymEnv(gym.Env):
       q_des = self.robot.ComputeInverseKinematics(i, np.array([x, y, z])) # [TODO]
       # Add joint PD contribution to tau
       vel = J@dq[3*i:3*(i+1)]
-      tau = kp[3*i:3*(i+1)]@(q_des - q[3*i:3*(i+1)]) + kd[3*i:3*(i+1)]@(-dq[3*i:3*(i+1)]) # [TODO] 
+      tau = kp[3*i:3*(i+1)]*(q_des - q[3*i:3*(i+1)]) + kd[3*i:3*(i+1)]*(-dq[3*i:3*(i+1)]) # [TODO] 
 
       # add Cartesian PD contribution (as you wish)
       tau += np.transpose(J)@(kpCartesian@(leg_xyz - pos) + kdCartesian@(-vel))
