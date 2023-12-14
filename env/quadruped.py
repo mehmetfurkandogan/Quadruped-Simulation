@@ -273,6 +273,13 @@ class Quadruped(object):
         feetInContactBool[footIndex] = 1
     return numValidContacts, numInvalidContacts, feetNormalForces, feetInContactBool
 
+  def GetFootPositions(self):
+    pos_array = np.zeros((4,3))
+    for i in range(4):
+      _, pos_array[i] = self.ComputeJacobianAndPosition(i)
+
+    return pos_array.flatten()
+
   ######################################################################################
   # INPUTS: set torques, ApplyAction, etc.
   ######################################################################################

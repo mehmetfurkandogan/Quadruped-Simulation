@@ -227,9 +227,9 @@ class HopfNetwork():
 
       X_dot[:,i] = [r_dot, theta_dot]
 
-      if self._couple:
-          for j in range(4):
-            theta_dot += r*self._coupling_strength*np.sin(self.get_theta()[j] - theta - self.PHI[i, j])
+    #  if self._couple:
+    #      for j in range(4):
+    #        theta_dot += r*self._coupling_strength*np.sin(self.get_theta()[j] - theta - self.PHI[i, j])
 
     # integrate 
     self.X = X + (X_dot_prev + X_dot) * self._dt / 2
