@@ -55,9 +55,9 @@ USE_GPU = True
 
 # after implementing, you will want to test how well the agent learns with your MDP: 
 
-env_configs = {"motor_control_mode":"CPG",
-               "task_env": "CPG", #  "LR_COURSE_TASK",
-               "observation_space_mode": "CPG_OBS"}
+env_configs = {"motor_control_mode":"CARTESIAN_PD",
+               "task_env": "FLAGRUN", #  "LR_COURSE_TASK",
+               "observation_space_mode": "FLAGRUN"}
 
 
 if USE_GPU and LEARNING_ALG=="SAC":
