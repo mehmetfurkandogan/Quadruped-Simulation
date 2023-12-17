@@ -600,6 +600,7 @@ class QuadrupedGymEnv(gym.Env):
     kdCartesian = self._robot_config.kdCartesian
     # get current motor velocities
     dq = self.robot.GetMotorVelocities()
+    __, __, __, foot_contact_bool = self.robot.GetContactInfo()
 
     action = np.zeros(12)
     for i in range(4):
@@ -614,7 +615,9 @@ class QuadrupedGymEnv(gym.Env):
       # [TODO]
       vel = J@dq[3*i:3*(i+1)]
       # calculate torques with Cartesian PD (Equation 5) [Make sure you are using matrix multiplications]
-      tau = np.transpose(J)@(kpCartesian@(Pd - pos) + kdCartesian@(vd-vel)) + J.T @ np.array([0,0,-9.8*np.sum(self.robot.GetTotalMassFromURDF())])# [TODO]
+      tau = np.transpose(J)@(kpCartesian@(Pd - pos) + kdCartesian@(vd-vel)) # [TODO]
+      if foot_contact_bool[i]:
+        tau += J.T @ np.array([0,0,-9.8*np.sum(self.robot.GetTotalMassFromURDF())]) / np.sum(foot_contact_bool)
 
       action[3*i:3*i+3] = tau
 
@@ -668,7 +671,7 @@ class QuadrupedGymEnv(gym.Env):
       tau = kp[3*i:3*(i+1)]*(q_des - q[3*i:3*(i+1)]) + kd[3*i:3*(i+1)]*(-dq[3*i:3*(i+1)]) # [TODO] 
 
       # add Cartesian PD contribution (as you wish)
-      tau += np.transpose(J)@(kpCartesian@(leg_xyz - pos) + kdCartesian@(-vel)) + J.T @ np.array([0,0,-9.8*np.sum(self.robot.GetTotalMassFromURDF())])
+      tau += np.transpose(J)@(kpCartesian@(leg_xyz - pos) + kdCartesian@(-vel))
 
       action[3*i:3*i+3] = tau
 
