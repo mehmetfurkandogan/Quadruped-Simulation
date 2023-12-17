@@ -97,9 +97,10 @@ obs = env.reset()
 episode_reward = 0
 
 # [TODO] initialize arrays to save data from simulation 
-#
+base_velocity_x = [];
+base_velocity_y = [];
 
-for i in range(2000):
+for i in range(1000):
     action, _states = model.predict(obs,deterministic=False) # sample at test time? ([TODO]: test)
     obs, rewards, dones, info = env.step(action)
     episode_reward += rewards
@@ -110,6 +111,16 @@ for i in range(2000):
 
     # [TODO] save data from current robot states for plots 
     # To get base position, for example: env.envs[0].env.robot.GetBasePosition() 
-    #
+    base_velocity_x.append(env.envs[0].env.robot.GetBaseLinearVelocity()[0])
+    base_velocity_y.append(env.envs[0].env.robot.GetBaseLinearVelocity()[1])
     
 # [TODO] make plots:
+fig1, ax1 = plt.subplots()
+ax1.plot(base_velocity_x, label="values", marker="o")
+ax1.plot([np.mean(base_velocity_x)]*len(base_velocity_x), label="mean", linestyle="--")
+plt.title('Velocity X')
+fig2, ax2 = plt.subplots()
+ax2.plot(base_velocity_y, label="values", marker="o")
+ax2.plot([np.mean(base_velocity_y)]*len(base_velocity_y), label="mean", linestyle="--")
+plt.title('Velocity Y')
+plt.show()

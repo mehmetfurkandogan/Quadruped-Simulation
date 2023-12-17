@@ -250,7 +250,9 @@ class QuadrupedGymEnv(gym.Env):
                                          np.array([3, 3, 3, 3]),
                                          np.array([10, 10, 10, 10]),
                                          np.array([3, 3, 3, 3]),
-                                         np.array([45, 45, 45, 45]))))
+                                         np.array([45, 45, 45, 45]),
+                                         np.pi/180*np.array([50, 50, 50]),
+                                         np.array([6, 6, 6]))))
       observation_low = (np.concatenate((self._robot_config.LOWER_ANGLE_JOINT,
                                          -self._robot_config.VELOCITY_LIMITS,
                                          np.array([-1.0]*4)  - OBSERVATION_EPS,
@@ -258,7 +260,9 @@ class QuadrupedGymEnv(gym.Env):
                                          np.array([0, 0, 0, 0]),
                                          np.array([0, 0, 0, 0]),
                                          -np.array([3, 3, 3, 3]),
-                                         np.array([0, 0, 0, 0]))))
+                                         np.array([0, 0, 0, 0]),
+                                         -np.pi/180*np.array([50, 50, 50]),
+                                         -np.array([1.5, 1.5, 1.5]))))
     elif self._observation_space_mode == "FLAGRUN":
       observation_high = (np.concatenate((self._robot_config.UPPER_ANGLE_JOINT,
                                          self._robot_config.VELOCITY_LIMITS,
@@ -319,7 +323,9 @@ class QuadrupedGymEnv(gym.Env):
                                     self._cpg.get_r(),
                                     self._cpg.get_theta(),
                                     self._cpg.get_dr(),
-                                    self._cpg.get_dtheta()))
+                                    self._cpg.get_dtheta(),
+                                    self.robot.GetBaseAngularVelocity(),
+                                    self.robot.GetBaseLinearVelocity()))
     elif self._observation_space_mode == "FLAGRUN":
       self._observation = np.concatenate((self.robot.GetMotorAngles(), 
                               self.robot.GetMotorVelocities(),
@@ -591,7 +597,7 @@ class QuadrupedGymEnv(gym.Env):
     u = np.clip(actions,-1,1)
     # scale to corresponding desired foot positions (i.e. ranges in x,y,z we allow the agent to choose foot positions)
     # [TODO: edit (do you think these should these be increased? How limiting is this?)]
-    scale_array = np.array([0.12, 0.07, 0.12]*4)
+    scale_array = np.array([0.12, 0.05, 0.12]*4)
     # add to nominal foot position in leg frame (what are the final ranges?)
     des_foot_pos = self._robot_config.NOMINAL_FOOT_POS_LEG_FRAME + scale_array*u
 
