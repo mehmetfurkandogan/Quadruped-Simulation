@@ -97,8 +97,8 @@ obs = env.reset()
 episode_reward = 0
 
 # [TODO] initialize arrays to save data from simulation 
-base_velocity_x = [];
-base_velocity_y = [];
+base_velocity_x = []
+base_velocity_y = []
 
 for i in range(1000):
     action, _states = model.predict(obs,deterministic=False) # sample at test time? ([TODO]: test)
