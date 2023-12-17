@@ -614,7 +614,7 @@ class QuadrupedGymEnv(gym.Env):
       # [TODO]
       vel = J@dq[3*i:3*(i+1)]
       # calculate torques with Cartesian PD (Equation 5) [Make sure you are using matrix multiplications]
-      tau = np.transpose(J)@(kpCartesian@(Pd - pos) + kdCartesian@(vd-vel)) + J.T @ np.array([0,-9.8*env.robot.total_mass,0])# [TODO]
+      tau = np.transpose(J)@(kpCartesian@(Pd - pos) + kdCartesian@(vd-vel)) + J.T @ np.array([0,0,-9.8*env.robot.GetTotalMassFromURDF()])# [TODO]
 
       action[3*i:3*i+3] = tau
 
@@ -668,7 +668,7 @@ class QuadrupedGymEnv(gym.Env):
       tau = kp[3*i:3*(i+1)]*(q_des - q[3*i:3*(i+1)]) + kd[3*i:3*(i+1)]*(-dq[3*i:3*(i+1)]) # [TODO] 
 
       # add Cartesian PD contribution (as you wish)
-      tau += np.transpose(J)@(kpCartesian@(leg_xyz - pos) + kdCartesian@(-vel))
+      tau += np.transpose(J)@(kpCartesian@(leg_xyz - pos) + kdCartesian@(-vel)) + J.T @ np.array([0,0,-9.8*env.robot.GetTotalMassFromURDF()])
 
       action[3*i:3*i+3] = tau
 
