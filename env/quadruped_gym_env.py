@@ -416,7 +416,7 @@ class QuadrupedGymEnv(gym.Env):
     self.abs_env_step = self._prev_env_step + self._env_step_counter
 
     # minimize distance to goal (we want to move towards the goal)
-    dist_reward = 10 * (self._prev_pos_to_goal - curr_dist_to_goal)
+    dist_reward = 20 * (self._prev_pos_to_goal - curr_dist_to_goal)
     # minimize yaw deviation to goal (necessary?)
   
     yaw_reward = 0.75 * np.exp(-np.abs(angle))
@@ -441,10 +441,10 @@ class QuadrupedGymEnv(gym.Env):
             + yaw_reward \
             + vel_reward \
             + c_scale*slip_penalty \
-            + base_motion_penalty \
+            + c_scale*base_motion_penalty \
             + c_scale*base_pos_penalty
 
-    return reward # keep rewards positive
+    return max(reward, 0) # keep rewards positive
   
   
   def _reward_lr_course(self, des_vel = 1):
@@ -760,7 +760,7 @@ class QuadrupedGymEnv(gym.Env):
 
       if self._TASK_ENV == "FLAGRUN":
         self.goal_id = None
-        
+
         if self._using_competition_env:
           self._ground_mu_k = ground_mu_k = 0.8
           self._pybullet_client.changeDynamics(self.plane, -1, lateralFriction=ground_mu_k)
