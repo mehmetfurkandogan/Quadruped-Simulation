@@ -108,7 +108,6 @@ for i in range(2000):
     # print(pos[2])
     # print("base pos: ")
     # print(env.envs[0].env.get_distance_and_angle_to_goal())
-    # print(env.envs[0].env.Ts)
     if dones:
         print('episode_reward', episode_reward)
         print('Final base position', info[0]['base_pos'])

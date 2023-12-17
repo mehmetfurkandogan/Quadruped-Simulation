@@ -422,7 +422,7 @@ class QuadrupedGymEnv(gym.Env):
     yaw_reward = -0.05 * np.abs(angle)
 
 
-    drift_penalty = -0.1 * np.abs(self.robot.GetBasePosition()[1]) 
+    #drift_penalty = -0.1 * np.abs(self.robot.GetBasePosition()[1]) 
   
     __, __, __, foot_contact_bool = self.robot.GetContactInfo()
     
@@ -431,16 +431,16 @@ class QuadrupedGymEnv(gym.Env):
       J, pos = self.robot.ComputeJacobianAndPosition(i)
       slip_penalty += -0.08 * foot_contact_bool[i] * np.linalg.norm((J@self.robot.GetMotorVelocities()[3*i:3*i+3])[0:2])**2
 
-    base_pos_penalty = -25 * ((self.robot.GetBasePosition()[2] - 0.305)**2)
-
+    # base_pos_penalty = -25 * ((self.robot.GetBasePosition()[2] - 0.305)**2)
+    self.abs_env_step = self._prev_env_step + self._env_step_counter
     base_motion_penalty = -3 * (0.8*self.robot.GetBaseLinearVelocity()[2]**2 + np.abs(0.2*self.robot.GetBaseAngularVelocity()[0]) + np.abs(0.2*self.robot.GetBaseAngularVelocity()[1]))
-    # c_scale = abs_env_step/(7*10**5) if abs_env_step < 7*10**5 else 1
+    c_scale = self.abs_env_step/(7*10**5) if self.abs_env_step < 7*10**5 else 1
     reward = dist_reward \
-            + yaw_reward \
-            + drift_penalty \
-            + slip_penalty \
-            + base_motion_penalty \
-            + base_pos_penalty
+            + c_scale*yaw_reward \
+            #+ drift_penalty \
+            + c_scale*slip_penalty \
+            + c_scale*base_motion_penalty
+            + c_scale*base_pos_penalty
 
     return reward # keep rewards positive
   
@@ -480,8 +480,8 @@ class QuadrupedGymEnv(gym.Env):
 
     self.abs_env_step = self._prev_env_step + self._env_step_counter
     base_motion_penalty = -3 * (0.8*self.robot.GetBaseLinearVelocity()[2]**2 + np.abs(0.2*self.robot.GetBaseAngularVelocity()[0]) + np.abs(0.2*self.robot.GetBaseAngularVelocity()[1]))
-    c_scale = abs_env_step/(5*10**5) if abs_env_step < 5*10**5 else 1
-    self._using_test_env = False if abs_env_step < 6*10**5 else True
+    c_scale = self.abs_env_step/(5*10**5) if self.abs_env_step < 5*10**5 else 1
+    self._using_test_env = False if self.abs_env_step < 6*10**5 else True
     reward = vel_tracking_reward \
             + c_scale * Rair_sum \
             + orientation_penalty \
