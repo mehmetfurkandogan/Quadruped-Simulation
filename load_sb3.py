@@ -103,11 +103,6 @@ for i in range(2000):
     action, _states = model.predict(obs,deterministic=False) # sample at test time? ([TODO]: test)
     obs, rewards, dones, info = env.step(action)
     episode_reward += rewards
-    # J, pos = env.envs[0].env.robot.ComputeJacobianAndPosition(2)
-    # print("foot pos: ")
-    # print(pos[2])
-    # print("base pos: ")
-    # print(env.envs[0].env.get_distance_and_angle_to_goal())
     if dones:
         print('episode_reward', episode_reward)
         print('Final base position', info[0]['base_pos'])
