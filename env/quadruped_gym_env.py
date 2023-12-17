@@ -230,13 +230,13 @@ class QuadrupedGymEnv(gym.Env):
                                          np.array([1.0]*4)  +  OBSERVATION_EPS, 
                                          np.pi/180*np.array([50, 50, 50]),
                                          np.array([1.5, 1.5, 1.5]),
-                                         np.array([0.6838, 0.6838, 0.4838, 0.6838, 0.6838, 0.4838, 0.4838, 0.4838, 0.4838, 0.4838, 0.4838, 0.4838]))))
+                                         np.array([1,1,1,1,4]))))
       observation_low = (np.concatenate((self._robot_config.LOWER_ANGLE_JOINT,
                                          -self._robot_config.VELOCITY_LIMITS,
                                          np.array([-1.0]*4)  - OBSERVATION_EPS,
                                          -np.pi/180*np.array([50, 50, 50]),
                                          -np.array([1.5, 1.5, 1.5]),
-                                         -np.array([0.4838, 0.4838, 0.4838, 0.4838, 0.4838, 0.4838, 0.6838, 0.6838, 0.4838, 0.6838, 0.6838, 0.4838]))))
+                                         np.array([0,0,0,0,0]))))
     elif self._observation_space_mode == "CPG_OBS":
       # [TODO] Set observation upper and lower ranges. What are reasonable limits? 
       # Note 50 is arbitrary below, you may have more or less
@@ -248,8 +248,7 @@ class QuadrupedGymEnv(gym.Env):
                                          np.array([3, 3, 3, 3]),
                                          np.array([10, 10, 10, 10]),
                                          np.array([3, 3, 3, 3]),
-                                         np.array([45, 45, 45, 45]),
-                                         np.array([0.6838, 0.6838, 0.4838, 0.6838, 0.6838, 0.4838, 0.4838, 0.4838, 0.4838, 0.4838, 0.4838, 0.4838]))))
+                                         np.array([45, 45, 45, 45]))))
       observation_low = (np.concatenate((self._robot_config.LOWER_ANGLE_JOINT,
                                          -self._robot_config.VELOCITY_LIMITS,
                                          np.array([-1.0]*4)  - OBSERVATION_EPS,
@@ -257,14 +256,12 @@ class QuadrupedGymEnv(gym.Env):
                                          np.array([0, 0, 0, 0]),
                                          np.array([0, 0, 0, 0]),
                                          -np.array([3, 3, 3, 3]),
-                                         np.array([0, 0, 0, 0]),
-                                         -np.array([0.4838, 0.4838, 0.4838, 0.4838, 0.4838, 0.4838, 0.6838, 0.6838, 0.4838, 0.6838, 0.6838, 0.4838]))))
+                                         np.array([0, 0, 0, 0]))))
     elif self._observation_space_mode == "FLAGRUN":
       observation_high = (np.concatenate((self._robot_config.UPPER_ANGLE_JOINT,
                                          self._robot_config.VELOCITY_LIMITS,
                                          np.array([1.0]*4)  +  OBSERVATION_EPS,
                                          np.array([1, 1, 1, 1, 4]),
-                                         np.array([0.6838, 0.6838, 0.4838, 0.6838, 0.6838, 0.4838, 0.4838, 0.4838, 0.4838, 0.4838, 0.4838, 0.4838]),
                                          np.pi/180*np.array([50, 50, 50]),
                                          np.array([1.5, 1.5, 1.5]),
                                          np.array([100, np.pi]))))
@@ -272,7 +269,6 @@ class QuadrupedGymEnv(gym.Env):
                                          -self._robot_config.VELOCITY_LIMITS,
                                          np.array([-1.0]*4)  - OBSERVATION_EPS,
                                          np.array([0, 0, 0, 0, 0]),
-                                         -np.array([0.4838, 0.4838, 0.4838, 0.4838, 0.4838, 0.4838, 0.6838, 0.6838, 0.4838, 0.6838, 0.6838, 0.4838]),
                                          -np.pi/180*np.array([50, 50, 50]),
                                          -np.array([1.5, 1.5, 1.5]),
                                          -np.array([0, np.pi]))))
@@ -309,7 +305,7 @@ class QuadrupedGymEnv(gym.Env):
                                     self.robot.GetBaseOrientation(),
                                     self.robot.GetBaseAngularVelocity(),
                                     self.robot.GetBaseLinearVelocity(),
-                                    self.robot.GetFootPositions()))
+                                    np.append(np.array(self.robot.GetContactInfo()[3]),self.robot.GetContactInfo()[0])))
     elif self._observation_space_mode == "CPG_OBS":
       # [TODO] Get observation from robot. What are reasonable measurements we could get on hardware?
       # if using the CPG, you can include states with self._cpg.get_r(), for example
@@ -321,14 +317,12 @@ class QuadrupedGymEnv(gym.Env):
                                     self._cpg.get_r(),
                                     self._cpg.get_theta(),
                                     self._cpg.get_dr(),
-                                    self._cpg.get_dtheta(),
-                                    self.robot.GetFootPositions()))
+                                    self._cpg.get_dtheta()))
     elif self._observation_space_mode == "FLAGRUN":
       self._observation = np.concatenate((self.robot.GetMotorAngles(), 
                               self.robot.GetMotorVelocities(),
                               self.robot.GetBaseOrientation(),
                               np.append(np.array(self.robot.GetContactInfo()[3]),self.robot.GetContactInfo()[0]),
-                              self.robot.GetFootPositions(),
                               self.robot.GetBaseAngularVelocity(),
                               self.robot.GetBaseLinearVelocity(),
                               np.array([self.get_distance_and_angle_to_goal()[0], self.get_distance_and_angle_to_goal()[1]])))
@@ -422,10 +416,6 @@ class QuadrupedGymEnv(gym.Env):
     # minimize yaw deviation to goal (necessary?)
     yaw_reward = -0.05 * np.abs(angle)
     drift_penalty = -0.1 * np.abs(self.robot.GetBasePosition()[1]) 
-    energy_penalty = 0 
-  
-    for tau,vel in zip(self._dt_motor_torques,self._dt_motor_velocities):
-      energy_penalty += np.abs(np.dot(tau,vel)) * self._time_step
   
     __, __, __, foot_contact_bool = self.robot.GetContactInfo()
     
@@ -434,24 +424,22 @@ class QuadrupedGymEnv(gym.Env):
       J, pos = self.robot.ComputeJacobianAndPosition(i)
       slip_penalty += -0.08 * foot_contact_bool[i] * np.linalg.norm((J@self.robot.GetMotorVelocities()[3*i:3*i+3])[0:2])**2
 
-    base_pos_penalty = -25 * ((self.robot.GetBasePosition()[2] - 0.32)**2)
+    base_pos_penalty = -25 * ((self.robot.GetBasePosition()[2] - 0.305)**2)
 
     abs_env_step = self._prev_env_step + self._env_step_counter
     base_motion_penalty = -3 * (0.8*self.robot.GetBaseLinearVelocity()[2]**2 + np.abs(0.2*self.robot.GetBaseAngularVelocity()[0]) + np.abs(0.2*self.robot.GetBaseAngularVelocity()[1]))
-    c_scale = abs_env_step/(7*10**5) if abs_env_step < 7*10**5 else 1
+    # c_scale = abs_env_step/(7*10**5) if abs_env_step < 7*10**5 else 1
     reward = dist_reward \
             + yaw_reward \
-            + c_scale * drift_penalty \
-            - 0.01 * c_scale * energy_penalty \
-            + c_scale * slip_penalty \
-            + c_scale * base_motion_penalty \
-            + c_scale * base_pos_penalty
+            + drift_penalty \
+            + slip_penalty \
+            + base_motion_penalty \
+            + base_pos_penalty
 
-    
-    return max(reward,0) # keep rewards positive
+    return reward # keep rewards positive
   
   
-  def _reward_lr_course(self, des_vel = 0.5):
+  def _reward_lr_course(self, des_vel = 1):
     global Ts
     """ Implement your reward function here. How will you improve upon the above? """
     # [TODO] add your reward function. 
@@ -482,12 +470,12 @@ class QuadrupedGymEnv(gym.Env):
       slip_penalty += -0.08 * foot_contact_bool[i] * np.linalg.norm((J@self.robot.GetMotorVelocities()[3*i:3*i+3])[0:2])**2
       clearance_penalty += -20 * ((pos[2] + 0.18)**2)
 
-    base_pos_penalty = -25 * ((self.robot.GetBasePosition()[2] - 0.32)**2)
+    base_pos_penalty = -25 * ((self.robot.GetBasePosition()[2] - 0.305)**2)
 
     abs_env_step = self._prev_env_step + self._env_step_counter
     base_motion_penalty = -3 * (0.8*self.robot.GetBaseLinearVelocity()[2]**2 + np.abs(0.2*self.robot.GetBaseAngularVelocity()[0]) + np.abs(0.2*self.robot.GetBaseAngularVelocity()[1]))
-    c_scale = abs_env_step/(7*10**5) if abs_env_step < 7*10**5 else 1
-    self._using_test_env = False if abs_env_step < 8*10**5 else True
+    c_scale = abs_env_step/(5*10**5) if abs_env_step < 5*10**5 else 1
+    self._using_test_env = False if abs_env_step < 6*10**5 else True
     reward = vel_tracking_reward \
             + Rair_sum \
             + orientation_penalty \
@@ -584,7 +572,7 @@ class QuadrupedGymEnv(gym.Env):
     u = np.clip(actions,-1,1)
     # scale to corresponding desired foot positions (i.e. ranges in x,y,z we allow the agent to choose foot positions)
     # [TODO: edit (do you think these should these be increased? How limiting is this?)]
-    scale_array = np.array([0.1, 0.05, 0.08]*4)
+    scale_array = np.array([0.12, 0.05, 0.12]*4)
     # add to nominal foot position in leg frame (what are the final ranges?)
     des_foot_pos = self._robot_config.NOMINAL_FOOT_POS_LEG_FRAME + scale_array*u
 
