@@ -416,10 +416,10 @@ class QuadrupedGymEnv(gym.Env):
     self.abs_env_step = self._prev_env_step + self._env_step_counter
 
     # minimize distance to goal (we want to move towards the goal)
-    dist_reward = 0.5 * (self._init_dist_to_goal - curr_dist_to_goal)
+    dist_reward = 10 * (self._prev_pos_to_goal - curr_dist_to_goal)
     # minimize yaw deviation to goal (necessary?)
   
-    yaw_reward = -0.2 * np.abs(angle)
+    yaw_reward = -0.05 * np.abs(angle)
 
 
     drift_penalty = -0.1 * np.abs(self.robot.GetBasePosition()[1]) 
@@ -474,7 +474,7 @@ class QuadrupedGymEnv(gym.Env):
     for i in range(4):
       J, pos = self.robot.ComputeJacobianAndPosition(i)
       slip_penalty += -0.08 * foot_contact_bool[i] * np.linalg.norm((J@self.robot.GetMotorVelocities()[3*i:3*i+3])[0:2])**2
-      clearance_penalty += -80 * ((pos[2] + 0.18)**2)
+      clearance_penalty += -20 * ((pos[2] + 0.18)**2)
 
     base_pos_penalty = -25 * ((self.robot.GetBasePosition()[2] - 0.305)**2)
 
@@ -486,7 +486,7 @@ class QuadrupedGymEnv(gym.Env):
             + c_scale * Rair_sum \
             + orientation_penalty \
             + c_scale * drift_penalty \
-            - 0.005 * c_scale *  energy_penalty \
+            - 0.01 * c_scale *  energy_penalty \
             + c_scale * slip_penalty \
             + clearance_penalty \
             + c_scale * base_motion_penalty \
