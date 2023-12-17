@@ -419,7 +419,8 @@ class QuadrupedGymEnv(gym.Env):
     dist_reward = 10 * (self._prev_pos_to_goal - curr_dist_to_goal)
     # minimize yaw deviation to goal (necessary?)
   
-    yaw_reward = 0.85 * np.exp(-np.abs(angle))
+    yaw_reward = 0.5 * np.exp(-np.abs(angle))
+    vel_reward = 0.5 * np.dot((self._goal_location)/np.linalg.norm(self._goal_location), self.robot.GetBaseLinearVelocity()[0:2])
 
 
     #drift_penalty = -0.1 * np.abs(self.robot.GetBasePosition()[1]) 
@@ -437,6 +438,7 @@ class QuadrupedGymEnv(gym.Env):
     c_scale = self.abs_env_step/(5*10**5) if self.abs_env_step < 5*10**5 else 1
     reward = dist_reward \
             + yaw_reward \
+            + vel_reward \
             + c_scale*slip_penalty \
             + c_scale*base_motion_penalty \
             + c_scale*base_pos_penalty
@@ -505,7 +507,7 @@ class QuadrupedGymEnv(gym.Env):
 
     return max(reward, 0)
 
-  def _reward_cpg(self, des_vel = 0.5):
+  def _reward_cpg(self, des_vel = 1):
     global Ts
     """ Implement your reward function here. How will you improve upon the above? """
     # [TODO] add your reward function. 
