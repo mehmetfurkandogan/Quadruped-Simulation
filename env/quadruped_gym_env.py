@@ -675,8 +675,6 @@ class QuadrupedGymEnv(gym.Env):
 
   def step(self, action):
     """ Step forward the simulation, given the action. """
-    if self._env_step_counter == 0:
-      self._init_dist_to_goal, _ = self.get_distance_and_angle_to_goal()
     curr_act = action.copy()
     # save motor torques and velocities to compute power in reward function
     self._dt_motor_torques = []
