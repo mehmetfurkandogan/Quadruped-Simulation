@@ -616,8 +616,8 @@ class QuadrupedGymEnv(gym.Env):
       vel = J@dq[3*i:3*(i+1)]
       # calculate torques with Cartesian PD (Equation 5) [Make sure you are using matrix multiplications]
       tau = np.transpose(J)@(kpCartesian@(Pd - pos) + kdCartesian@(vd-vel)) # [TODO]
-      if foot_contact_bool[i]:
-        tau += J.T @ np.array([0,0,-9.8*np.sum(self.robot.GetTotalMassFromURDF())]) / np.sum(foot_contact_bool)
+      #if foot_contact_bool[i]:
+      #  tau += J.T @ np.array([0,0,-9.8*np.sum(self.robot.GetTotalMassFromURDF())]) / np.sum(foot_contact_bool)
 
       action[3*i:3*i+3] = tau
 
@@ -760,6 +760,17 @@ class QuadrupedGymEnv(gym.Env):
 
       if self._TASK_ENV == "FLAGRUN":
         self.goal_id = None
+        
+        if self._using_competition_env:
+          self._ground_mu_k = ground_mu_k = 0.8
+          self._pybullet_client.changeDynamics(self.plane, -1, lateralFriction=ground_mu_k)
+          # self.add_competition_blocks()
+          self._add_noise = False # double check
+          self._using_test_env = False # double check 
+          self._goal_idx = 0
+          self.goal_x = np.arange(np.pi/4, 11, np.pi/2)
+          self.goal_y = 0.2 * self.goal_x * np.sin(2*self.goal_x)
+
         self._reset_goal()
 
     else:
@@ -789,8 +800,13 @@ class QuadrupedGymEnv(gym.Env):
         self._pybullet_client.removeBody(self.goal_id)
     except:
       pass
-    self._goal_location = 6 * (np.random.random((2,)) - 0.5) 
-    self._goal_location += self.robot.GetBasePosition()[0:2]
+    if self._using_competition_env:
+      self._goal_location = np.array([self.goal_x[self._goal_idx], 
+                                      self.goal_y[self._goal_idx]])
+      self._goal_idx = min(self._goal_idx+1, len(self.goal_x))
+    else:
+      self._goal_location = 6 * (np.random.random((2,)) - 0.5) 
+      self._goal_location += self.robot.GetBasePosition()[0:2]
     sh_colBox = self._pybullet_client.createCollisionShape(self._pybullet_client.GEOM_BOX,
         halfExtents=[0.2,0.2,0.2])
     orn = self._pybullet_client.getQuaternionFromEuler([0,0,0])
@@ -799,6 +815,7 @@ class QuadrupedGymEnv(gym.Env):
                           baseCollisionShapeIndex = sh_colBox,
                           basePosition = [self._goal_location[0],self._goal_location[1],0.6],
                           baseOrientation=orn)
+
     # print('goal is at ', self._goal_location)
 
   def _settle_robot(self):
