@@ -191,6 +191,8 @@ class QuadrupedGymEnv(gym.Env):
     self._MAX_EP_LEN = EPISODE_LENGTH # max sim time in seconds, arbitrary
     self._action_bound = 1.0
     self.Ts = [0,0,0,0]
+    self._init_dist_to_goal = 0
+    self.abs_env_step = 0
     # if using CPG
     self.setupCPG()
 
@@ -264,7 +266,7 @@ class QuadrupedGymEnv(gym.Env):
                                          np.array([1, 1, 1, 1, 4]),
                                          np.pi/180*np.array([50, 50, 50]),
                                          np.array([1.5, 1.5, 1.5]),
-                                         np.array([100, np.pi]))))
+                                         np.array([30, np.pi]))))
       observation_low = (np.concatenate((self._robot_config.LOWER_ANGLE_JOINT,
                                          -self._robot_config.VELOCITY_LIMITS,
                                          np.array([-1.0]*4)  - OBSERVATION_EPS,
@@ -400,8 +402,8 @@ class QuadrupedGymEnv(gym.Env):
     body_dir_vec = body_dir_vec.reshape(2,)
     body_goal_vec = body_goal_vec.reshape(2,)
 
-    Vn = unit_vector( np.array([0,0,1]) )
-    c = np.cross( np.hstack([body_dir_vec,0]), np.hstack([body_goal_vec,0])  )
+    Vn = unit_vector(np.array([0,0,1]) )
+    c = np.cross(np.hstack([body_dir_vec,0]), np.hstack([body_goal_vec,0])  )
     angle = angle_between(body_dir_vec, body_goal_vec)
     angle = angle * np.sign( np.dot( Vn , c ) )
 
@@ -409,12 +411,17 @@ class QuadrupedGymEnv(gym.Env):
   
   def _reward_flag_run(self):
     """ Learn to move towards goal location. """
+
     curr_dist_to_goal, angle = self.get_distance_and_angle_to_goal()
+    self.abs_env_step = self._prev_env_step + self._env_step_counter
 
     # minimize distance to goal (we want to move towards the goal)
-    dist_reward = 10 * (self._prev_pos_to_goal - curr_dist_to_goal)
+    dist_reward = 0.5 * (self._init_dist_to_goal - curr_dist_to_goal)
     # minimize yaw deviation to goal (necessary?)
-    yaw_reward = -0.05 * np.abs(angle)
+  
+    yaw_reward = -0.2 * np.abs(angle)
+
+
     drift_penalty = -0.1 * np.abs(self.robot.GetBasePosition()[1]) 
   
     __, __, __, foot_contact_bool = self.robot.GetContactInfo()
@@ -426,7 +433,6 @@ class QuadrupedGymEnv(gym.Env):
 
     base_pos_penalty = -25 * ((self.robot.GetBasePosition()[2] - 0.305)**2)
 
-    abs_env_step = self._prev_env_step + self._env_step_counter
     base_motion_penalty = -3 * (0.8*self.robot.GetBaseLinearVelocity()[2]**2 + np.abs(0.2*self.robot.GetBaseAngularVelocity()[0]) + np.abs(0.2*self.robot.GetBaseAngularVelocity()[1]))
     # c_scale = abs_env_step/(7*10**5) if abs_env_step < 7*10**5 else 1
     reward = dist_reward \
@@ -468,24 +474,35 @@ class QuadrupedGymEnv(gym.Env):
     for i in range(4):
       J, pos = self.robot.ComputeJacobianAndPosition(i)
       slip_penalty += -0.08 * foot_contact_bool[i] * np.linalg.norm((J@self.robot.GetMotorVelocities()[3*i:3*i+3])[0:2])**2
-      clearance_penalty += -20 * ((pos[2] + 0.18)**2)
+      clearance_penalty += -80 * ((pos[2] + 0.18)**2)
 
     base_pos_penalty = -25 * ((self.robot.GetBasePosition()[2] - 0.305)**2)
 
-    abs_env_step = self._prev_env_step + self._env_step_counter
+    self.abs_env_step = self._prev_env_step + self._env_step_counter
     base_motion_penalty = -3 * (0.8*self.robot.GetBaseLinearVelocity()[2]**2 + np.abs(0.2*self.robot.GetBaseAngularVelocity()[0]) + np.abs(0.2*self.robot.GetBaseAngularVelocity()[1]))
     c_scale = abs_env_step/(5*10**5) if abs_env_step < 5*10**5 else 1
     self._using_test_env = False if abs_env_step < 6*10**5 else True
     reward = vel_tracking_reward \
-            + Rair_sum \
+            + c_scale * Rair_sum \
             + orientation_penalty \
             + c_scale * drift_penalty \
-            - 0.01 * energy_penalty \
+            - 0.005 * c_scale *  energy_penalty \
             + c_scale * slip_penalty \
-            + c_scale * clearance_penalty \
+            + clearance_penalty \
             + c_scale * base_motion_penalty \
             + ang_vel_reward \
-            + c_scale * base_pos_penalty
+            + base_pos_penalty
+    # at every 1000 steps print the reward components vertically
+    if self.abs_env_step % 1000 == 0:
+      print("vel_tracking_reward: ", vel_tracking_reward)
+      print("Rair_sum: ", Rair_sum)
+      print("orientation_penalty: ", orientation_penalty)
+      print("drift_penalty: ", drift_penalty)
+      print("energy_penalty: ", energy_penalty)
+      print("slip_penalty: ", slip_penalty)
+      print("clearance_penalty: ", clearance_penalty)
+      print("base_motion_penalty: ", base_motion_penalty)
+      print("reward: ", reward)
 
     return max(reward, 0)
 
@@ -512,10 +529,10 @@ class QuadrupedGymEnv(gym.Env):
       slip_penalty += -0.08 * foot_contact_bool[i] * np.linalg.norm((J@self.robot.GetMotorVelocities()[3*i:3*i+3])[0:2])**2
       clearance_penalty += -20 * ((pos[2] + 0.18)**2)
 
-    abs_env_step = self._prev_env_step + self._env_step_counter
+    self.abs_env_step = self._prev_env_step + self._env_step_counter
     base_motion_penalty = -3 * (0.8*self.robot.GetBaseLinearVelocity()[2]**2 + np.abs(0.2*self.robot.GetBaseAngularVelocity()[0]) + np.abs(0.2*self.robot.GetBaseAngularVelocity()[1]))
-    c_scale = abs_env_step/(2*10**5) if abs_env_step < 2*10**5 else 1
-    self._using_test_env = False if abs_env_step < 3*10**5 else True
+    c_scale = self.abs_env_step/(2*10**5) if self.abs_env_step < 2*10**5 else 1
+    self._using_test_env = False if self.abs_env_step < 3*10**5 else True
     reward = vel_tracking_reward \
             + c_scale * orientation_penalty \
             + c_scale * drift_penalty \
@@ -658,6 +675,8 @@ class QuadrupedGymEnv(gym.Env):
 
   def step(self, action):
     """ Step forward the simulation, given the action. """
+    if self._env_step_counter == 0:
+      self._init_dist_to_goal, _ = self.get_distance_and_angle_to_goal()
     curr_act = action.copy()
     # save motor torques and velocities to compute power in reward function
     self._dt_motor_torques = []
@@ -690,6 +709,7 @@ class QuadrupedGymEnv(gym.Env):
       dist_to_goal, _ = self.get_distance_and_angle_to_goal()
       if dist_to_goal < 0.5:
         self._reset_goal()
+        self._init_dist_to_goal, _ = self.get_distance_and_angle_to_goal()
 
     return np.array(self._noisy_observation()), reward, done, {'base_pos': self.robot.GetBasePosition()} 
 
