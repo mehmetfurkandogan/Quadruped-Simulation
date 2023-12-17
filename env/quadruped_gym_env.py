@@ -422,7 +422,7 @@ class QuadrupedGymEnv(gym.Env):
     self.abs_env_step = self._prev_env_step + self._env_step_counter
 
     # minimize distance to goal (we want to move towards the goal)
-    dist_reward = 50 * (self._prev_pos_to_goal - curr_dist_to_goal)
+    dist_reward = np.exp(self._prev_pos_to_goal - curr_dist_to_goal) - 1
     # minimize yaw deviation to goal (necessary?)
   
     yaw_reward = 2 * (np.exp(-np.abs(angle)) - 0.3)
