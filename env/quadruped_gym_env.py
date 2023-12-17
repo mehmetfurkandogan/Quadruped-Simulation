@@ -591,7 +591,7 @@ class QuadrupedGymEnv(gym.Env):
     u = np.clip(actions,-1,1)
     # scale to corresponding desired foot positions (i.e. ranges in x,y,z we allow the agent to choose foot positions)
     # [TODO: edit (do you think these should these be increased? How limiting is this?)]
-    scale_array = np.array([0.12, 0.05, 0.12]*4)
+    scale_array = np.array([0.12, 0.07, 0.12]*4)
     # add to nominal foot position in leg frame (what are the final ranges?)
     des_foot_pos = self._robot_config.NOMINAL_FOOT_POS_LEG_FRAME + scale_array*u
 
@@ -614,7 +614,7 @@ class QuadrupedGymEnv(gym.Env):
       # [TODO]
       vel = J@dq[3*i:3*(i+1)]
       # calculate torques with Cartesian PD (Equation 5) [Make sure you are using matrix multiplications]
-      tau = np.transpose(J)@(kpCartesian@(Pd - pos) + kdCartesian@(vd-vel)) + J.T @ np.array([0,0,-9.8*env.robot.GetTotalMassFromURDF()])# [TODO]
+      tau = np.transpose(J)@(kpCartesian@(Pd - pos) + kdCartesian@(vd-vel)) + J.T @ np.array([0,0,-9.8*np.sum(self.robot.GetTotalMassFromURDF())])# [TODO]
 
       action[3*i:3*i+3] = tau
 
@@ -668,7 +668,7 @@ class QuadrupedGymEnv(gym.Env):
       tau = kp[3*i:3*(i+1)]*(q_des - q[3*i:3*(i+1)]) + kd[3*i:3*(i+1)]*(-dq[3*i:3*(i+1)]) # [TODO] 
 
       # add Cartesian PD contribution (as you wish)
-      tau += np.transpose(J)@(kpCartesian@(leg_xyz - pos) + kdCartesian@(-vel)) + J.T @ np.array([0,0,-9.8*env.robot.GetTotalMassFromURDF()])
+      tau += np.transpose(J)@(kpCartesian@(leg_xyz - pos) + kdCartesian@(-vel)) + J.T @ np.array([0,0,-9.8*np.sum(self.robot.GetTotalMassFromURDF())])
 
       action[3*i:3*i+3] = tau
 
