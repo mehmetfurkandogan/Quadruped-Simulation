@@ -422,7 +422,7 @@ class QuadrupedGymEnv(gym.Env):
     self.abs_env_step = self._prev_env_step + self._env_step_counter
 
     # minimize distance to goal (we want to move towards the goal)
-    dist_reward = np.exp(self._prev_pos_to_goal - curr_dist_to_goal) - 1
+    dist_reward = 100 * (self._prev_pos_to_goal - curr_dist_to_goal)
     # minimize yaw deviation to goal (necessary?)
   
     yaw_reward = 2 * (np.exp(-np.abs(angle)) - 0.3)
@@ -441,8 +441,8 @@ class QuadrupedGymEnv(gym.Env):
 
     base_pos_penalty = -25 * ((self.robot.GetBasePosition()[2] - 0.305)**2)
     self.abs_env_step = self._prev_env_step + self._env_step_counter
-    base_motion_penalty = -1.5 * (0.8*self.robot.GetBaseLinearVelocity()[2]**2 + np.abs(0.2*self.robot.GetBaseAngularVelocity()[0]) + np.abs(0.2*self.robot.GetBaseAngularVelocity()[1]))
-    c_scale = self.abs_env_step/(6*10**5) if self.abs_env_step < 6*10**5 else 1
+    base_motion_penalty = -2 * (0.8*self.robot.GetBaseLinearVelocity()[2]**2 + np.abs(0.2*self.robot.GetBaseAngularVelocity()[0]) + np.abs(0.2*self.robot.GetBaseAngularVelocity()[1]))
+    c_scale = self.abs_env_step/(7*10**5) if self.abs_env_step < 7*10**5 else 1
     reward = dist_reward \
             + yaw_reward \
             + vel_reward \
