@@ -434,9 +434,9 @@ class QuadrupedGymEnv(gym.Env):
     base_pos_penalty = -25 * ((self.robot.GetBasePosition()[2] - 0.305)**2)
     self.abs_env_step = self._prev_env_step + self._env_step_counter
     base_motion_penalty = -3 * (0.8*self.robot.GetBaseLinearVelocity()[2]**2 + np.abs(0.2*self.robot.GetBaseAngularVelocity()[0]) + np.abs(0.2*self.robot.GetBaseAngularVelocity()[1]))
-    c_scale = self.abs_env_step/(7*10**5) if self.abs_env_step < 7*10**5 else 1
+    c_scale = self.abs_env_step/(5*10**5) if self.abs_env_step < 5*10**5 else 1
     reward = dist_reward \
-            + c_scale*yaw_reward \
+            + yaw_reward \
             + c_scale*slip_penalty \
             + c_scale*base_motion_penalty \
             + c_scale*base_pos_penalty
