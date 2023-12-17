@@ -420,7 +420,8 @@ class QuadrupedGymEnv(gym.Env):
     # minimize yaw deviation to goal (necessary?)
   
     yaw_reward = 0.5 * np.exp(-np.abs(angle))
-    vel_reward = 0.5 * np.dot((self._goal_location)/np.linalg.norm(self._goal_location), self.robot.GetBaseLinearVelocity()[0:2])
+    g_vector = self._goal_location - self.robot.GetBasePosition()[0:2]
+    vel_reward = np.dot((g_vector)/np.linalg.norm(g_vector), self.robot.GetBaseLinearVelocity()[0:2])
 
 
     #drift_penalty = -0.1 * np.abs(self.robot.GetBasePosition()[1]) 
