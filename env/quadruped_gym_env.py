@@ -266,7 +266,7 @@ class QuadrupedGymEnv(gym.Env):
                                          np.array([1, 1, 1, 1, 4]),
                                          np.pi/180*np.array([50, 50, 50]),
                                          np.array([1.5, 1.5, 1.5]),
-                                         np.array([30, np.pi]))))
+                                         np.array([100, np.pi]))))
       observation_low = (np.concatenate((self._robot_config.LOWER_ANGLE_JOINT,
                                          -self._robot_config.VELOCITY_LIMITS,
                                          np.array([-1.0]*4)  - OBSERVATION_EPS,
@@ -297,7 +297,7 @@ class QuadrupedGymEnv(gym.Env):
     if self._observation_space_mode == "DEFAULT":
       self._observation = np.concatenate((self.robot.GetMotorAngles(), 
                                           self.robot.GetMotorVelocities(),
-                                          self.robot.GetBaseOrientation() ))
+                                          self.robot.GetBaseOrientation()))
     elif self._observation_space_mode == "LR_COURSE_OBS":
       # [TODO] Get observation from robot. What are reasonable measurements we could get on hardware?
       # if using the CPG, you can include states with self._cpg.get_r(), for example
@@ -419,7 +419,7 @@ class QuadrupedGymEnv(gym.Env):
     dist_reward = 10 * (self._prev_pos_to_goal - curr_dist_to_goal)
     # minimize yaw deviation to goal (necessary?)
   
-    yaw_reward = -0.05 * np.abs(angle)
+    yaw_reward = 0.85 * np.exp(-np.abs(angle))
 
 
     #drift_penalty = -0.1 * np.abs(self.robot.GetBasePosition()[1]) 
@@ -431,15 +431,14 @@ class QuadrupedGymEnv(gym.Env):
       J, pos = self.robot.ComputeJacobianAndPosition(i)
       slip_penalty += -0.08 * foot_contact_bool[i] * np.linalg.norm((J@self.robot.GetMotorVelocities()[3*i:3*i+3])[0:2])**2
 
-    # base_pos_penalty = -25 * ((self.robot.GetBasePosition()[2] - 0.305)**2)
+    base_pos_penalty = -25 * ((self.robot.GetBasePosition()[2] - 0.305)**2)
     self.abs_env_step = self._prev_env_step + self._env_step_counter
     base_motion_penalty = -3 * (0.8*self.robot.GetBaseLinearVelocity()[2]**2 + np.abs(0.2*self.robot.GetBaseAngularVelocity()[0]) + np.abs(0.2*self.robot.GetBaseAngularVelocity()[1]))
     c_scale = self.abs_env_step/(7*10**5) if self.abs_env_step < 7*10**5 else 1
     reward = dist_reward \
             + c_scale*yaw_reward \
-            #+ drift_penalty \
             + c_scale*slip_penalty \
-            + c_scale*base_motion_penalty
+            + c_scale*base_motion_penalty \
             + c_scale*base_pos_penalty
 
     return reward # keep rewards positive
