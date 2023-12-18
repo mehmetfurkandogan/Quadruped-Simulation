@@ -58,7 +58,7 @@ from utils.file_utils import get_latest_model, load_all_results
 LEARNING_ALG = "SAC"
 interm_dir = "./logs/intermediate_models/"
 # path to saved models, i.e. interm_dir + '121321105810'
-log_dir = interm_dir + '121723153820'
+log_dir = interm_dir + '121823121519' #121723153820 <LR_COURSE> 121823121519 <FLAGRUN> 121723233147 <CPG>
 
 # initialize env configs (render at test time)
 # check ideal conditions, as well as robustness to UNSEEN noise during training
@@ -67,8 +67,8 @@ env_config['render'] = True
 env_config['record_video'] = False
 env_config['add_noise'] = True 
 env_config['motor_control_mode'] = "CARTESIAN_PD"
-env_config['observation_space_mode'] = "LR_COURSE_OBS"
-env_config['task_env'] = "LR_COURSE_TASK"
+env_config['observation_space_mode'] = "FLAGRUN"
+env_config['task_env'] = "FLAGRUN"
 env_config['competition_env'] = True
 
 # get latest model and normalization stats, and plot 
@@ -95,32 +95,28 @@ print("\nLoaded model", model_name, "\n")
 
 obs = env.reset()
 episode_reward = 0
+time_passed = 0
 
 # [TODO] initialize arrays to save data from simulation 
-base_velocity_x = []
-base_velocity_y = []
+base_velocity = []
 
-for i in range(1000):
+for i in range(5000):
+    time_passed = env.envs[0].env.get_sim_time()
     action, _states = model.predict(obs,deterministic=False) # sample at test time? ([TODO]: test)
     obs, rewards, dones, info = env.step(action)
     episode_reward += rewards
     if dones:
         print('episode_reward', episode_reward)
         print('Final base position', info[0]['base_pos'])
+        print('Time passed', time_passed)
         episode_reward = 0
+        plt.plot(base_velocity, label="values", marker="o")
+        plt.plot([np.mean(base_velocity)]*len(base_velocity), label="mean", linestyle="--")
+        plt.title('Velocity')
+        plt.show()
 
     # [TODO] save data from current robot states for plots 
     # To get base position, for example: env.envs[0].env.robot.GetBasePosition() 
-    base_velocity_x.append(env.envs[0].env.robot.GetBaseLinearVelocity()[0])
-    base_velocity_y.append(env.envs[0].env.robot.GetBaseLinearVelocity()[1])
+    base_velocity.append(np.linalg.norm(env.envs[0].env.robot.GetBaseLinearVelocity()[0:2]))
     
 # [TODO] make plots:
-fig1, ax1 = plt.subplots()
-ax1.plot(base_velocity_x, label="values", marker="o")
-ax1.plot([np.mean(base_velocity_x)]*len(base_velocity_x), label="mean", linestyle="--")
-plt.title('Velocity X')
-fig2, ax2 = plt.subplots()
-ax2.plot(base_velocity_y, label="values", marker="o")
-ax2.plot([np.mean(base_velocity_y)]*len(base_velocity_y), label="mean", linestyle="--")
-plt.title('Velocity Y')
-plt.show()
