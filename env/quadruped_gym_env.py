@@ -98,7 +98,7 @@ VIDEO_LOG_DIRECTORY = 'videos/' + datetime.datetime.now().strftime("vid-%Y-%m-%d
 #         torques are computed based on inverse kinematics + joint PD (or you can add Cartesian PD)
 
 
-EPISODE_LENGTH = 10   # how long before we reset the environment (max episode length for RL)
+EPISODE_LENGTH = 50   # how long before we reset the environment (max episode length for RL)
 MAX_FWD_VELOCITY = 1  # to avoid exploiting simulator dynamics, cap max reward for body velocity 
 
 # CPG quantities
@@ -268,15 +268,15 @@ class QuadrupedGymEnv(gym.Env):
                                          self._robot_config.VELOCITY_LIMITS,
                                          np.array([1.0]*4)  +  OBSERVATION_EPS,
                                          np.array([1, 1, 1, 1, 4]),
-                                         np.pi/180*np.array([50, 50, 50]),
-                                         np.array([1.5, 1.5, 1.5]),
+                                         np.pi/180*np.array([180, 180, 180]),
+                                         np.array([5, 5, 5]),
                                          np.array([100, np.pi]))))
       observation_low = (np.concatenate((self._robot_config.LOWER_ANGLE_JOINT,
                                          -self._robot_config.VELOCITY_LIMITS,
                                          np.array([-1.0]*4)  - OBSERVATION_EPS,
                                          np.array([0, 0, 0, 0, 0]),
-                                         -np.pi/180*np.array([50, 50, 50]),
-                                         -np.array([1.5, 1.5, 1.5]),
+                                         -np.pi/180*np.array([180, 180, 180]),
+                                         -np.array([1, 1, 1]),
                                          -np.array([0, np.pi]))))
     else:
       raise ValueError("observation space not defined or not intended")
@@ -429,26 +429,45 @@ class QuadrupedGymEnv(gym.Env):
     g_vector = self._goal_location - self.robot.GetBasePosition()[0:2]
     vel_reward = np.exp(np.dot((g_vector)/np.linalg.norm(g_vector), self.robot.GetBaseLinearVelocity()[0:2])) - 1
 
+    energy_penalty = 0 
+    
+    for tau,vel in zip(self._dt_motor_torques,self._dt_motor_velocities):
+      energy_penalty += np.abs(np.dot(tau,vel)) * self._time_step
 
     #drift_penalty = -0.1 * np.abs(self.robot.GetBasePosition()[1]) 
   
     __, __, __, foot_contact_bool = self.robot.GetContactInfo()
+
+    Rair_sum = 0
+
+    for idx,i in enumerate(foot_contact_bool):
+      if i == 1:
+        Rair_sum +=  0.05 * min(self.Ts[idx], 20) if self.Ts[idx] < 50 else 0
+        self.Ts[idx] = 0
+      else:
+        self.Ts[idx] += self._time_step*1000
     
     slip_penalty = 0
+    clearance_penalty = 0
     for i in range(4):
       J, pos = self.robot.ComputeJacobianAndPosition(i)
       slip_penalty += -0.08 * foot_contact_bool[i] * np.linalg.norm((J@self.robot.GetMotorVelocities()[3*i:3*i+3])[0:2])**2
+      clearance_penalty += -20 * ((pos[2] + 0.18)**2)
 
-    base_pos_penalty = -25 * ((self.robot.GetBasePosition()[2] - 0.305)**2)
+    base_pos_penalty = -80 * ((self.robot.GetBasePosition()[2] - 0.305)**2)
     self.abs_env_step = self._prev_env_step + self._env_step_counter
-    base_motion_penalty = -2 * (0.8*self.robot.GetBaseLinearVelocity()[2]**2 + np.abs(0.2*self.robot.GetBaseAngularVelocity()[0]) + np.abs(0.2*self.robot.GetBaseAngularVelocity()[1]))
-    c_scale = self.abs_env_step/(7*10**5) if self.abs_env_step < 7*10**5 else 1
+    base_motion_penalty = -1.5 * (0.8*self.robot.GetBaseLinearVelocity()[2]**2 + np.abs(0.2*self.robot.GetBaseAngularVelocity()[0]) + np.abs(0.2*self.robot.GetBaseAngularVelocity()[1]))
+    c_scale = self.abs_env_step/(6*10**5) if self.abs_env_step < 6*10**5 else 1
+    self._using_test_env = False if self.abs_env_step < 6*10**5 else True
     reward = dist_reward \
             + yaw_reward \
             + vel_reward \
             + c_scale*slip_penalty \
             + c_scale*base_motion_penalty \
-            + c_scale*base_pos_penalty
+            + c_scale*base_pos_penalty \
+            - 0.01 * c_scale *  energy_penalty \
+            + c_scale * clearance_penalty \
+            + c_scale * Rair_sum
 
     return max(reward, 0) # keep rewards positive
   
@@ -597,7 +616,7 @@ class QuadrupedGymEnv(gym.Env):
     u = np.clip(actions,-1,1)
     # scale to corresponding desired foot positions (i.e. ranges in x,y,z we allow the agent to choose foot positions)
     # [TODO: edit (do you think these should these be increased? How limiting is this?)]
-    scale_array = np.array([0.12, 0.05, 0.12]*4)
+    scale_array = np.array([0.12, 0.075, 0.12]*4)
     # add to nominal foot position in leg frame (what are the final ranges?)
     des_foot_pos = self._robot_config.NOMINAL_FOOT_POS_LEG_FRAME + scale_array*u
 
