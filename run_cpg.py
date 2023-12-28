@@ -65,13 +65,17 @@ env = QuadrupedGymEnv(render=True,              # visualize
 cpg = HopfNetwork(time_step=TIME_STEP, 
                   omega_swing = 5*2*np.pi, 
                   omega_stance = 2*2*np.pi,
-                  gait = "WALK",
+                  gait = "TROT",
                   mu = 1**2)
 
-TEST_STEPS = int(10 / (TIME_STEP))
+TEST_STEPS = int(2 / (TIME_STEP))
 t = np.arange(TEST_STEPS)*TIME_STEP
 
 # [TODO] initialize data structures to save CPG and robot states
+r_values = [[] for _ in range(4)]
+rdot_values = [[] for _ in range(4)]
+theta_values = [[] for _ in range(4)]
+theta_dot_values = [[] for _ in range(4)]
 
 
 ############## Sample Gains
@@ -85,6 +89,17 @@ kdCartesian = np.diag([20]*3) #10
 for j in range(TEST_STEPS):
   # initialize torque array to send to motors
   action = np.zeros(12) 
+  r = cpg.get_r()
+  rdot = cpg.get_dr()
+  theta = cpg.get_theta()
+  theta_dot = cpg.get_dtheta()
+
+# Save the state values
+  for i in range(4):
+    r_values[i].append(r[i])
+    rdot_values[i].append(rdot[i])
+    theta_values[i].append(theta[i])
+    theta_dot_values[i].append(theta_dot[i])
   # get desired foot positions from CPG 
   xs,zs = cpg.update()
   # [TODO] get current motor angles and velocities for joint PD, see GetMotorAngles(), GetMotorVelocities() in quadruped.py
@@ -131,7 +146,12 @@ for j in range(TEST_STEPS):
 # PLOTS
 #####################################################
 # example
-# fig = plt.figure()
-# plt.plot(t,joint_pos[1,:], label='FR thigh')
-# plt.legend()
-# plt.show()
+labels = ['r', 'rdot', 'theta', 'theta_dot']
+data = [r_values, rdot_values, theta_values, theta_dot_values]
+
+for i in range(4):
+    fig, axs = plt.subplots(4, 1)  # Adjust the size as needed
+    for j in range(4):
+        axs[j].plot(data[j][i])
+        axs[j].set_title(f'{labels[j]} for leg {i+1} over time')
+    plt.show()
