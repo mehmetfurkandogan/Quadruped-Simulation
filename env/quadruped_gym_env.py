@@ -98,7 +98,7 @@ VIDEO_LOG_DIRECTORY = 'videos/' + datetime.datetime.now().strftime("vid-%Y-%m-%d
 #         torques are computed based on inverse kinematics + joint PD (or you can add Cartesian PD)
 
 
-EPISODE_LENGTH = 50   # how long before we reset the environment (max episode length for RL)
+EPISODE_LENGTH = 10   # how long before we reset the environment (max episode length for RL)
 MAX_FWD_VELOCITY = 1  # to avoid exploiting simulator dynamics, cap max reward for body velocity 
 
 # CPG quantities
@@ -432,7 +432,7 @@ class QuadrupedGymEnv(gym.Env):
     dist_reward = 100 * (self._prev_pos_to_goal - curr_dist_to_goal)
     # minimize yaw deviation to goal (necessary?)
   
-    yaw_reward = 2 * (np.exp(-np.abs(angle)) - 0.3)
+    yaw_reward = 2 * (np.exp(-np.abs(angle)))
     g_vector = self._goal_location - self.robot.GetBasePosition()[0:2]
     vel_reward = np.exp(np.dot((g_vector)/np.linalg.norm(g_vector), self.robot.GetBaseLinearVelocity()[0:2])) - 1
 
