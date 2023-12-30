@@ -456,6 +456,7 @@ class QuadrupedGymEnv(gym.Env):
 
     base_pos_penalty = -80 * ((self.robot.GetBasePosition()[2] - 0.305)**2)
     self.abs_env_step = self._prev_env_step + self._env_step_counter
+    orientation_penalty = -3 * (np.abs(self.robot.GetBaseOrientationRollPitchYaw()[0])**2 + np.abs(self.robot.GetBaseOrientationRollPitchYaw()[1])**2)
     base_motion_penalty = -1.5 * (0.8*self.robot.GetBaseLinearVelocity()[2]**2 + np.abs(0.2*self.robot.GetBaseAngularVelocity()[0]) + np.abs(0.2*self.robot.GetBaseAngularVelocity()[1]))
     c_scale = self.abs_env_step/(6*10**5) if self.abs_env_step < 6*10**5 else 1
     self._using_test_env = False if self.abs_env_step < 6*10**5 else True
@@ -467,7 +468,8 @@ class QuadrupedGymEnv(gym.Env):
             + c_scale*base_pos_penalty \
             - 0.01 * c_scale *  energy_penalty \
             + c_scale * clearance_penalty \
-            + c_scale * Rair_sum
+            + c_scale * Rair_sum \
+            + c_scale * orientation_penalty
 
     return max(reward, 0) # keep rewards positive
   
