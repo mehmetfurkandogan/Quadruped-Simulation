@@ -240,7 +240,7 @@ class QuadrupedGymEnv(gym.Env):
                                          np.array([-1.0]*4)  - OBSERVATION_EPS,
                                          -np.pi/180*np.array([10, 10, 10]),
                                          -np.array([0.5, 0.5, 0.5]),
-                                         np.array([0,0,0,0,0])
+                                         np.array([0,0,0,0,0]),
                                          np.array([0, 0, 0, 0]))))
     elif self._observation_space_mode == "CPG_OBS":
       # [TODO] Set observation upper and lower ranges. What are reasonable limits? 
