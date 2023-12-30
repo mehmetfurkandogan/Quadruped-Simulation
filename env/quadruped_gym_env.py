@@ -452,9 +452,9 @@ class QuadrupedGymEnv(gym.Env):
         Rair_sum +=  0.05 * min(self.Ts[idx], 200) if self.Ts[idx] < 500 else 0
         self.Ts[idx] = 0
       else:
-        self.Ts[idx] += (self.env.get_sim_time() - self._prev_time)*1000
+        self.Ts[idx] += (self.get_sim_time() - self._prev_time)*1000
     
-    self._prev_time = self.env.get_sim_time()
+    self._prev_time = self.get_sim_time()
 
     slip_penalty = 0
     clearance_penalty = 0
@@ -505,9 +505,9 @@ class QuadrupedGymEnv(gym.Env):
         Rair_sum +=  0.05 * min(self.Ts[idx], 200) if self.Ts[idx] < 500 else 0
         self.Ts[idx] = 0
       else:
-        self.Ts[idx] += (self.env.get_sim_time() - self._prev_time)*1000
+        self.Ts[idx] += (self.get_sim_time() - self._prev_time)*1000
     
-    self._prev_time = self.env.get_sim_time()
+    self._prev_time = self.get_sim_time()
 
     slip_penalty = 0
     clearance_penalty = 0
