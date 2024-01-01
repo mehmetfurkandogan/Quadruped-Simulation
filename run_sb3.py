@@ -55,7 +55,7 @@ USE_GPU = True
 
 # after implementing, you will want to test how well the agent learns with your MDP: 
 
-env_configs = {"motor_control_mode":"CARTESIAN_PD",
+env_configs = {"motor_control_mode":"PD",
                "task_env": "FLAGRUN", #  "LR_COURSE_TASK",
                "observation_space_mode": "FLAGRUN"}
 
@@ -88,7 +88,7 @@ if LOAD_NN:
     env = VecNormalize.load(stats_path, env)
 
 # Multi-layer perceptron (MLP) policy of two layers of size _,_ 
-policy_kwargs = dict(net_arch=[256,256])
+policy_kwargs = dict(net_arch=[256,384,384,256])
 # What are these hyperparameters? Check here: https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html
 n_steps = 4096 
 learning_rate = lambda f: 1e-4 

@@ -58,7 +58,7 @@ from utils.file_utils import get_latest_model, load_all_results
 LEARNING_ALG = "SAC"
 interm_dir = "./logs/intermediate_models/"
 # path to saved models, i.e. interm_dir + '121321105810'
-log_dir = interm_dir + '121823121519' #121723153820 <LR_COURSE> 121823121519 <FLAGRUN> 121723233147 <CPG>
+log_dir = interm_dir + '123123214652' #121723153820 <LR_COURSE> 121823121519 <FLAGRUN> 121723233147 <CPG> 123123125221 <PD>
 
 # initialize env configs (render at test time)
 # check ideal conditions, as well as robustness to UNSEEN noise during training
@@ -66,7 +66,7 @@ env_config = {}
 env_config['render'] = True
 env_config['record_video'] = False
 env_config['add_noise'] = True 
-env_config['motor_control_mode'] = "CARTESIAN_PD"
+env_config['motor_control_mode'] = "PD"
 env_config['observation_space_mode'] = "FLAGRUN"
 env_config['task_env'] = "FLAGRUN"
 env_config['competition_env'] = True

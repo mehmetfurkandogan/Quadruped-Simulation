@@ -113,6 +113,9 @@ class HopfNetwork():
     self.PHI_walk = self.set_phi(np.array([0.5, 0, 0.25, 0.75]))
     self.PHI_bound = self.set_phi(np.array([0.5, 0.5, 0, 0]))
     self.PHI_pace = self.set_phi(np.array([0.5, 0, 0.5, 0]))
+    self.PHI_dwalk = self.set_phi(np.array([0.5, 0, 0.75, 0.25]))
+    self.PHI_rgallop = self.set_phi(np.array([0.5, 0.6, 0.1, 0]))
+    self.PHI_tgallop = self.set_phi(np.array([0.6, 0.5, 0.1, 0]))
 
     if gait == "TROT":
       self.PHI = self.PHI_trot
@@ -122,6 +125,12 @@ class HopfNetwork():
       self.PHI = self.PHI_bound
     elif gait == "WALK":
       self.PHI = self.PHI_walk
+    elif gait == "DWALK":
+      self.PHI = self.PHI_dwalk
+    elif gait == "RGALLOP":
+      self.PHI = self.PHI_rgallop
+    elif gait == "TGALLOP":
+      self.PHI = self.PHI_tgallop
     else:
       raise ValueError( gait + 'not implemented.')
 

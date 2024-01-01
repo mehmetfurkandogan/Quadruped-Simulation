@@ -516,7 +516,7 @@ class QuadrupedGymEnv(gym.Env):
       slip_penalty += -0.08 * foot_contact_bool[i] * np.linalg.norm((J@self.robot.GetMotorVelocities()[3*i:3*i+3])[0:2])**2
       clearance_penalty += -80 * ((pos[2] + 0.18)**2)
 
-    base_pos_penalty = -25 * ((self.robot.GetBasePosition()[2] - 0.305)**2)
+    base_pos_penalty = -80 * ((self.robot.GetBasePosition()[2] - 0.305)**2)
 
     self.abs_env_step = self._prev_env_step + self._env_step_counter
     base_motion_penalty = -3 * (0.8*self.robot.GetBaseLinearVelocity()[2]**2 + np.abs(0.2*self.robot.GetBaseAngularVelocity()[0]) + np.abs(0.2*self.robot.GetBaseAngularVelocity()[1]))

@@ -65,14 +65,15 @@ env = QuadrupedGymEnv(render=True,              # visualize
 # initialize Hopf Network, supply gait
 cpg = HopfNetwork(time_step=TIME_STEP, 
                   omega_swing = 5*2*np.pi, 
-                  omega_stance = 2*2*np.pi,
-                  gait = "TROT",
+                  omega_stance = 3*2*np.pi,
+                  gait = "WALK",
                   mu = 1**2,
                   alpha=5,
-                  ground_clearance=0.05,
-                  robot_height=0.28,
+                  ground_clearance=0.08,
+                  robot_height=0.26,
                   ground_penetration=0.01,
-                  coupling_strength=1)
+                  coupling_strength=1,
+                  des_step_len = 0.07)
 
 TEST_STEPS = int(2 / (TIME_STEP))
 t = np.arange(TEST_STEPS)*TIME_STEP
@@ -174,44 +175,44 @@ max_val = [np.max(r_values), np.max(rdot_values), np.max(theta_values), np.max(t
 max_val = np.ceil(max_val)
 
 
-for i in range(4):
-  for j in range(4):
-      axs[j, i].plot(t,data[j][i])
-      # max_val = np.ceil(np.max(data[j][i])) # Get the maximum value of the data points
-      axs[j, i].set_ylim(0, 1.1*max_val[j])  # Set the y-axis upper limit to the maximum value
-      axs[j, i].set_yticks(np.arange(0, max_val[j]+0.1, max_val[j]))  # Set y-ticks from 0 to max_val with a step of max_val
-      if j == 0:  # Set the column titles (leg_1, leg_2, leg_3, leg_4) for the first row
-          axs[j, i].set_title(f'$leg_{i+1}$', fontsize=9)
-      if i == 0:  # Set the row titles (r, r_dot, theta, theta_dot) for the first column
-          axs[j, i].set_ylabel(f'${labels[j]}$', fontsize=8, rotation=0) 
-      axs[j, i].set_xlabel('t [s]', fontsize=8, rotation=0, labelpad=-10) 
+# for i in range(4):
+#   for j in range(4):
+#       axs[j, i].plot(t,data[j][i])
+#       # max_val = np.ceil(np.max(data[j][i])) # Get the maximum value of the data points
+#       axs[j, i].set_ylim(0, 1.1*max_val[j])  # Set the y-axis upper limit to the maximum value
+#       axs[j, i].set_yticks(np.arange(0, max_val[j]+0.1, max_val[j]))  # Set y-ticks from 0 to max_val with a step of max_val
+#       if j == 0:  # Set the column titles (leg_1, leg_2, leg_3, leg_4) for the first row
+#           axs[j, i].set_title(f'$leg_{i+1}$', fontsize=9)
+#       if i == 0:  # Set the row titles (r, r_dot, theta, theta_dot) for the first column
+#           axs[j, i].set_ylabel(f'${labels[j]}$', fontsize=8, rotation=0) 
+#       axs[j, i].set_xlabel('t [s]', fontsize=8, rotation=0, labelpad=-10) 
 
-plt.tight_layout()
-plt.savefig('all_plots.eps', format='eps')
-# plt.show()
+# plt.tight_layout()
+# plt.savefig('all_plots.eps', format='eps')
+# # plt.show()
 
-# Plot the actual and desired foot positions
-plt.figure()
-plt.plot(x_desired, z_desired, label='Desired')
-plt.plot(x_actual, z_actual, label='Actual')
-plt.legend()
-plt.xlabel('x [m]')
-plt.ylabel('z [m]')
-plt.savefig('foot_pos.eps', format='eps')
+# # Plot the actual and desired foot positions
+# plt.figure()
+# plt.plot(x_desired, z_desired, label='Desired')
+# plt.plot(x_actual, z_actual, label='Actual')
+# plt.legend()
+# plt.xlabel('x [m]')
+# plt.ylabel('z [m]')
+# plt.savefig('foot_pos.eps', format='eps')
 
 
 # plot x and z seperately against time
-plt.figure()
-plt.plot(t, x_desired, label='Desired')
-plt.plot(t, x_actual, label='Actual')
-plt.legend()
-plt.xlabel('t [s]')
-plt.ylabel('x [m]')
+# plt.figure()
+# plt.plot(t, x_desired, label='Desired')
+# plt.plot(t, x_actual, label='Actual')
+# plt.legend()
+# plt.xlabel('t [s]')
+# plt.ylabel('x [m]')
 
-plt.figure()
-plt.plot(t, z_desired, label='Desired')
-plt.plot(t, z_actual, label='Actual')
-plt.legend()
-plt.xlabel('t [s]')
-plt.ylabel('z [m]')
-plt.show()
+# plt.figure()
+# plt.plot(t, z_desired, label='Desired')
+# plt.plot(t, z_actual, label='Actual')
+# plt.legend()
+# plt.xlabel('t [s]')
+# plt.ylabel('z [m]')
+# plt.show()
