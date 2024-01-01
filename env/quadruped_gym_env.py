@@ -98,7 +98,7 @@ VIDEO_LOG_DIRECTORY = 'videos/' + datetime.datetime.now().strftime("vid-%Y-%m-%d
 #         torques are computed based on inverse kinematics + joint PD (or you can add Cartesian PD)
 
 
-EPISODE_LENGTH = 50   # how long before we reset the environment (max episode length for RL)
+EPISODE_LENGTH = 10   # how long before we reset the environment (max episode length for RL)
 MAX_FWD_VELOCITY = 1  # to avoid exploiting simulator dynamics, cap max reward for body velocity 
 
 # CPG quantities
@@ -240,7 +240,7 @@ class QuadrupedGymEnv(gym.Env):
                                          np.array([-1.0]*4)  - OBSERVATION_EPS,
                                          -np.pi/180*np.array([10, 10, 10]),
                                          -np.array([0.5, 0.5, 0.5]),
-                                         np.array([0,0,0,0,0])
+                                         np.array([0,0,0,0,0]),
                                          np.array([0, 0, 0, 0]))))
     elif self._observation_space_mode == "CPG_OBS":
       # [TODO] Set observation upper and lower ranges. What are reasonable limits? 
@@ -432,7 +432,7 @@ class QuadrupedGymEnv(gym.Env):
     dist_reward = 100 * (self._prev_pos_to_goal - curr_dist_to_goal)
     # minimize yaw deviation to goal (necessary?)
   
-    yaw_reward = 2 * (np.exp(-np.abs(angle)) - 0.3)
+    yaw_reward = 2 * (np.exp(-np.abs(angle)))
     g_vector = self._goal_location - self.robot.GetBasePosition()[0:2]
     vel_reward = np.exp(np.dot((g_vector)/np.linalg.norm(g_vector), self.robot.GetBaseLinearVelocity()[0:2])) - 1
 
@@ -449,21 +449,21 @@ class QuadrupedGymEnv(gym.Env):
 
     for idx,i in enumerate(foot_contact_bool):
       if i == 1:
-        Rair_sum +=  0.05 * min(self.Ts[idx], 200) if self.Ts[idx] < 500 else 0
+        Rair_sum +=  0.05 * min(self.Ts[idx], 50) if self.Ts[idx] < 100 else 0
         self.Ts[idx] = 0
       else:
-        self.Ts[idx] += (self.env.get_sim_time() - self._prev_time)*1000
+        self.Ts[idx] += (self.get_sim_time() - self._prev_time)*1000
     
-    self._prev_time = self.env.get_sim_time()
+    self._prev_time = self.get_sim_time()
 
     slip_penalty = 0
     clearance_penalty = 0
     for i in range(4):
       J, pos = self.robot.ComputeJacobianAndPosition(i)
       slip_penalty += -0.08 * foot_contact_bool[i] * np.linalg.norm((J@self.robot.GetMotorVelocities()[3*i:3*i+3])[0:2])**2
-      clearance_penalty += -80 * ((pos[2] + 0.18)**2)
+      clearance_penalty += -500 * ((pos[2] + 0.18)**2)
 
-    base_pos_penalty = -80 * ((self.robot.GetBasePosition()[2] - 0.305)**2)
+    base_pos_penalty = -1500 * ((self.robot.GetBasePosition()[2] - 0.305)**2)
     self.abs_env_step = self._prev_env_step + self._env_step_counter
     orientation_penalty = -3 * (np.abs(self.robot.GetBaseOrientationRollPitchYaw()[0])**2 + np.abs(self.robot.GetBaseOrientationRollPitchYaw()[1])**2)
     base_motion_penalty = -1.5 * (0.8*self.robot.GetBaseLinearVelocity()[2]**2 + np.abs(0.2*self.robot.GetBaseAngularVelocity()[0]) + np.abs(0.2*self.robot.GetBaseAngularVelocity()[1]))
@@ -502,21 +502,21 @@ class QuadrupedGymEnv(gym.Env):
 
     for idx,i in enumerate(foot_contact_bool):
       if i == 1:
-        Rair_sum +=  0.05 * min(self.Ts[idx], 200) if self.Ts[idx] < 500 else 0
+        Rair_sum +=  0.05 * min(self.Ts[idx], 50) if self.Ts[idx] < 100 else 0
         self.Ts[idx] = 0
       else:
-        self.Ts[idx] += (self.env.get_sim_time() - self._prev_time)*1000
+        self.Ts[idx] += (self.get_sim_time() - self._prev_time)*1000
     
-    self._prev_time = self.env.get_sim_time()
+    self._prev_time = self.get_sim_time()
 
     slip_penalty = 0
     clearance_penalty = 0
     for i in range(4):
       J, pos = self.robot.ComputeJacobianAndPosition(i)
       slip_penalty += -0.08 * foot_contact_bool[i] * np.linalg.norm((J@self.robot.GetMotorVelocities()[3*i:3*i+3])[0:2])**2
-      clearance_penalty += -80 * ((pos[2] + 0.18)**2)
+      clearance_penalty += -500 * ((pos[2] + 0.18)**2)
 
-    base_pos_penalty = -25 * ((self.robot.GetBasePosition()[2] - 0.305)**2)
+    base_pos_penalty = -1500 * ((self.robot.GetBasePosition()[2] - 0.305)**2)
 
     self.abs_env_step = self._prev_env_step + self._env_step_counter
     base_motion_penalty = -3 * (0.8*self.robot.GetBaseLinearVelocity()[2]**2 + np.abs(0.2*self.robot.GetBaseAngularVelocity()[0]) + np.abs(0.2*self.robot.GetBaseAngularVelocity()[1]))
