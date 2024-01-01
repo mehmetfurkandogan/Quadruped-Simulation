@@ -58,7 +58,7 @@ from utils.file_utils import get_latest_model, load_all_results
 LEARNING_ALG = "SAC"
 interm_dir = "./logs/intermediate_models/"
 # path to saved models, i.e. interm_dir + '121321105810'
-log_dir = interm_dir + '121823121519' #121723153820 <LR_COURSE> 121823121519 <FLAGRUN> 121723233147 <CPG>
+log_dir = interm_dir + '010124062550' #121723153820 <LR_COURSE> 121823121519 <FLAGRUN> 121723233147 <CPG>
 
 # initialize env configs (render at test time)
 # check ideal conditions, as well as robustness to UNSEEN noise during training
@@ -67,8 +67,8 @@ env_config['render'] = True
 env_config['record_video'] = False
 env_config['add_noise'] = True 
 env_config['motor_control_mode'] = "CARTESIAN_PD"
-env_config['observation_space_mode'] = "FLAGRUN"
-env_config['task_env'] = "FLAGRUN"
+env_config['observation_space_mode'] = "LR_COURSE_OBS"
+env_config['task_env'] = "LR_COURSE_TASK"
 env_config['competition_env'] = True
 
 # get latest model and normalization stats, and plot 
@@ -96,27 +96,46 @@ print("\nLoaded model", model_name, "\n")
 obs = env.reset()
 episode_reward = 0
 time_passed = 0
+time_up = 0
+time_down = 0
 
 # [TODO] initialize arrays to save data from simulation 
 base_velocity = []
-
+energy = 0
 for i in range(5000):
     time_passed = env.envs[0].env.get_sim_time()
     action, _states = model.predict(obs,deterministic=False) # sample at test time? ([TODO]: test)
     obs, rewards, dones, info = env.step(action)
     episode_reward += rewards
+    # print("base pos", info[0]['base_pos'][2])
     if dones:
         print('episode_reward', episode_reward)
         print('Final base position', info[0]['base_pos'])
         print('Time passed', time_passed)
+        COT = energy / (info[0]['base_pos'][0] * 9.81 * 12)
+        print("Cost of Transport: ",COT)
+        print("Average Velocity: ", np.mean(base_velocity))
         episode_reward = 0
+        energy = 0
         plt.plot(base_velocity, label="values", marker="o")
         plt.plot([np.mean(base_velocity)]*len(base_velocity), label="mean", linestyle="--")
         plt.title('Velocity')
         plt.show()
+        base_velocity = []
+    
+    if env.envs[0].env.robot.GetContactInfo()[3][0] == 1:
+        time_up = 0
+        time_down += TIME_STEP
+    if env.envs[0].env.robot.GetContactInfo()[3][0] == 0:
+        time_down = 0
+        time_up += TIME_STEP
 
+    print("Stance Time: ", time_down,"Swing Time: " ,time_up)
+    energy += np.abs(np.dot(env.envs[0].env.robot.GetMotorTorques(), env.envs[0].env.robot.GetMotorVelocities()))*env.envs[0].env._time_step
     # [TODO] save data from current robot states for plots 
     # To get base position, for example: env.envs[0].env.robot.GetBasePosition() 
     base_velocity.append(np.linalg.norm(env.envs[0].env.robot.GetBaseLinearVelocity()[0:2]))
     
 # [TODO] make plots:
+
+

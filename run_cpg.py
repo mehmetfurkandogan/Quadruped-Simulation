@@ -64,11 +64,11 @@ env = QuadrupedGymEnv(render=True,              # visualize
 
 # initialize Hopf Network, supply gait
 cpg = HopfNetwork(time_step=TIME_STEP, 
-                  omega_swing = 5*2*np.pi, 
-                  omega_stance = 2*2*np.pi,
-                  gait = "TROT",
+                  omega_swing = 8*2*np.pi, 
+                  omega_stance = 10*2*np.pi,
+                  gait = "PACE",
                   mu = 1**2,
-                  alpha=5,
+                  alpha=50,
                   ground_clearance=0.05,
                   robot_height=0.28,
                   ground_penetration=0.01,
@@ -87,7 +87,8 @@ x_desired = []
 z_desired = []
 x_actual = []
 z_actual = []
-joint_state = [[] for _ in range(3)]
+joint_state_actual = [[] for _ in range(3)]
+joint_state_desired = [[] for _ in range(3)]
 
 
 ############## Sample Gains
@@ -97,7 +98,12 @@ kd=np.array([2,0.7,0.7])
 # Cartesian PD gains
 kpCartesian = np.diag([2400]*3)
 kdCartesian = np.diag([35]*3)
-
+time_passed = 0
+prev_time = 0
+energy = 0
+base_vel = []
+time_up = 0
+time_down = 0
 
 for j in tqdm(range(TEST_STEPS)):
   # initialize torque array to send to motors
@@ -129,10 +135,14 @@ for j in tqdm(range(TEST_STEPS)):
       z_desired.append(zs[1])
       x_actual.append(env.robot.ComputeJacobianAndPosition(1)[1][0])
       z_actual.append(env.robot.ComputeJacobianAndPosition(1)[1][2])
+      for k in range(3):
+        joint_state_actual[k].append(env.robot.GetMotorAngles()[k])
     # call inverse kinematics to get corresponding joint angles (see ComputeInverseKinematics() in quadruped.py)
 
     leg_q = env.robot.ComputeInverseKinematics(i, leg_xyz) # [TODO]
-    
+    if i == 1:
+      for k in range(3):
+        joint_state_desired[k].append(leg_q[k])
     # Add joint PD contribution to tau for leg i (Equation 4)
 
     tau += kp*(leg_q - q[3*i:3*(i+1)]) + kd*(-dq[3*i:3*(i+1)]) # [TODO] 
@@ -152,42 +162,71 @@ for j in tqdm(range(TEST_STEPS)):
 
     # Set tau for legi in action vector
     action[3*i:3*i+3] = tau
-
+  # calculate the energy with the actions
+  energy += np.abs(np.dot(action, dq))*TIME_STEP
+  base_vel.append(env.robot.GetBaseLinearVelocity()[0])
+  # calculate the time duration of one step
+  
+  if env.robot.GetContactInfo()[3][0] == 1:
+    time_up = 0
+    time_down += TIME_STEP
+  if env.robot.GetContactInfo()[3][0] == 0:
+    time_down = 0
+    time_up += TIME_STEP
+  print("Stance Time: ", time_down,"Swing Time: " ,time_up)
   # send torques to robot and simulate TIME_STEP seconds 
   env.step(action) 
-
   # [TODO] save any CPG or robot states
 
 
-
+base_pos = env.robot.GetBasePosition()[0]
+COT = energy / (base_pos * 9.81 * 12)
+print("base_pos: ", base_pos)
+print("Cost of Transport: ", COT)
+print("Average Velocity: ", np.mean(base_vel))
 
 ##################################################### 
 # PLOTS
 #####################################################
 # Plot the CPG states
 
-fig, axs = plt.subplots(4, 4)
-labels = ['r ', '\\dot{r} ', '\\theta [rad] ', '\\dot{\\theta} [rad/s] ']
-data = [r_values, rdot_values, theta_values, theta_dot_values]
+# plot the CPG states for just one leg in 4x1 subplots
 
 max_val = [np.max(r_values), np.max(rdot_values), np.max(theta_values), np.max(theta_dot_values)]
 max_val = np.ceil(max_val)
 
+plt.figure()
 
-for i in range(4):
-  for j in range(4):
-      axs[j, i].plot(t,data[j][i])
-      # max_val = np.ceil(np.max(data[j][i])) # Get the maximum value of the data points
-      axs[j, i].set_ylim(0, 1.1*max_val[j])  # Set the y-axis upper limit to the maximum value
-      axs[j, i].set_yticks(np.arange(0, max_val[j]+0.1, max_val[j]))  # Set y-ticks from 0 to max_val with a step of max_val
-      if j == 0:  # Set the column titles (leg_1, leg_2, leg_3, leg_4) for the first row
-          axs[j, i].set_title(f'$leg_{i+1}$', fontsize=9)
-      if i == 0:  # Set the row titles (r, r_dot, theta, theta_dot) for the first column
-          axs[j, i].set_ylabel(f'${labels[j]}$', fontsize=8, rotation=0) 
-      axs[j, i].set_xlabel('t [s]', fontsize=8, rotation=0, labelpad=-10) 
+plt.subplot(411)
+plt.plot(t, r_values[0], label='r')
+plt.ylabel('r', rotation = 0, labelpad=10)
+ax = plt.gca()
+ax.set_yticks(np.arange(0, max_val[0]+0.1, max_val[0]))
+plt.xticks([])  # remove x-ticks
 
-plt.tight_layout()
-plt.savefig('all_plots.eps', format='eps')
+plt.subplot(412)
+plt.plot(t, theta_values[0], label='$\\theta$')
+plt.ylabel('$\\theta$', rotation = 0, labelpad=10)
+ax = plt.gca()
+ax.set_yticks(np.arange(0, max_val[2]+0.1, max_val[2]))
+plt.xticks([])  # remove x-ticks
+
+plt.subplot(413)
+plt.plot(t, rdot_values[1], label='$\\dot{r}$')
+plt.ylabel('$\\dot{r}$', rotation = 0, labelpad=10)
+ax = plt.gca()
+ax.set_yticks(np.arange(0, max_val[1]+0.1, max_val[1]))
+plt.xticks([])  # remove x-ticks
+
+plt.subplot(414)
+plt.plot(t, theta_dot_values[1], label='$\\dot{\\theta}$')
+plt.ylabel('$\\dot{\\theta}$', rotation = 0, labelpad=10)
+ax = plt.gca()
+ax.set_yticks(np.arange(0, max_val[3]+0.1, max_val[3]))
+
+plt.xlabel('t [s]')
+plt.savefig('cpg_states.pdf', format='pdf')
+
 # plt.show()
 
 # Plot the actual and desired foot positions
@@ -197,21 +236,38 @@ plt.plot(x_actual, z_actual, label='Actual')
 plt.legend()
 plt.xlabel('x [m]')
 plt.ylabel('z [m]')
-plt.savefig('foot_pos.eps', format='eps')
+plt.savefig('foot_pos_limit_cycle.pdf', format='pdf')
 
 
 # plot x and z seperately against time
 plt.figure()
-plt.plot(t, x_desired, label='Desired')
-plt.plot(t, x_actual, label='Actual')
+plt.plot(t, x_desired, label='X Desired')
+plt.plot(t, x_actual, label='X Actual')
+plt.plot(t, z_desired, label='Z Desired')
+plt.plot(t, z_actual, label='Z Actual')
 plt.legend()
 plt.xlabel('t [s]')
-plt.ylabel('x [m]')
+plt.ylabel('x, z [m]')
+plt.savefig('foot_xz_cartesian.pdf', format='pdf')
 
+
+# plot all joint angles with desired joint angles in just one graph
 plt.figure()
-plt.plot(t, z_desired, label='Desired')
-plt.plot(t, z_actual, label='Actual')
+plt.plot(t, joint_state_desired[0], label='Hip Desired')
+plt.plot(t, joint_state_actual[0], label='Hip Actual')
+plt.plot(t, joint_state_desired[1], label='Thigh Desired')
+plt.plot(t, joint_state_actual[1], label='Thigh Actual')
+plt.plot(t, joint_state_desired[2], label='Calf Desired')
+plt.plot(t, joint_state_actual[2], label='Calf Actual')
 plt.legend()
 plt.xlabel('t [s]')
-plt.ylabel('z [m]')
+plt.ylabel('Joint angles [rad]')
+plt.savefig('joint_angles_cartesian.pdf', format='pdf')
 plt.show()
+
+
+
+
+
+
+
