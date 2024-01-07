@@ -143,19 +143,19 @@ for i in range(5000):
             # plot cpg states in subplots
             plt.figure()
             plt.subplot(411)
-            plt.plot(r_values[0], label='r')
+            plt.plot(r_values, label='r')
             plt.ylabel('r', rotation = 0, labelpad=10)
             plt.xticks([])  # remove x-ticks
             plt.subplot(412)
-            plt.plot(theta_values[0], label='$\\theta$')
+            plt.plot(theta_values, label='$\\theta$')
             plt.ylabel('$\\theta$', rotation = 0, labelpad=10)
             plt.xticks([])  # remove x-ticks
             plt.subplot(413)
-            plt.plot(rdot_values[1], label='$\\dot{r}$')
+            plt.plot(rdot_values, label='$\\dot{r}$')
             plt.ylabel('$\\dot{r}$', rotation = 0, labelpad=10)
             plt.xticks([])  # remove x-ticks
             plt.subplot(414)
-            plt.plot(theta_dot_values[1], label='$\\dot{\\theta}$')
+            plt.plot(theta_dot_values, label='$\\dot{\\theta}$')
             plt.ylabel('$\\dot{\\theta}$', rotation = 0, labelpad=10)
             plt.xlabel('t [s]')            
         plt.show()
@@ -176,10 +176,10 @@ for i in range(5000):
         foot_positions[i]['x'].append(foot_positions_flat[i*3])
         foot_positions[i]['z'].append(env.envs[0].env.robot.GetBasePosition()[2]+foot_positions_flat[i*3+2])
     if env_config['motor_control_mode'] == "CPG":
-        r_values.append(env.envs[0].env._cpg.get_r())
-        rdot_values.append(env.envs[0].env._cpg.get_dr())
-        theta_values.append(env.envs[0].env._cpg.get_theta())
-        theta_dot_values.append(env.envs[0].env._cpg.get_dtheta())
+        r_values.append(env.envs[0].env._cpg.get_r()[0])
+        rdot_values.append(env.envs[0].env._cpg.get_dr()[0])
+        theta_values.append(env.envs[0].env._cpg.get_theta()[0])
+        theta_dot_values.append(env.envs[0].env._cpg.get_dtheta()[0])
 
     energy += np.abs(np.dot(env.envs[0].env.robot.GetMotorTorques(), env.envs[0].env.robot.GetMotorVelocities()))*env.envs[0].env._time_step
     # [TODO] save data from current robot states for plots 
