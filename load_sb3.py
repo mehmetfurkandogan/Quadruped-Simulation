@@ -140,14 +140,24 @@ for i in range(5000):
         plt.ylabel('Velocity (m/s)')
         plt.title('Velocity')
         if env_config['motor_control_mode'] == "CPG":
+            # plot cpg states in subplots
             plt.figure()
-            plt.plot(r_values, label="r")
-            plt.plot(rdot_values, label="r_dot")
-            plt.plot(theta_values, label="theta")
-            plt.plot(theta_dot_values, label="theta_dot")
-            plt.xlabel('Time (s)')
-            plt.ylabel('CPG States')
-            plt.title('CPG States')
+            plt.subplot(411)
+            plt.plot(r_values[0], label='r')
+            plt.ylabel('r', rotation = 0, labelpad=10)
+            plt.xticks([])  # remove x-ticks
+            plt.subplot(412)
+            plt.plot(theta_values[0], label='$\\theta$')
+            plt.ylabel('$\\theta$', rotation = 0, labelpad=10)
+            plt.xticks([])  # remove x-ticks
+            plt.subplot(413)
+            plt.plot(rdot_values[1], label='$\\dot{r}$')
+            plt.ylabel('$\\dot{r}$', rotation = 0, labelpad=10)
+            plt.xticks([])  # remove x-ticks
+            plt.subplot(414)
+            plt.plot(theta_dot_values[1], label='$\\dot{\\theta}$')
+            plt.ylabel('$\\dot{\\theta}$', rotation = 0, labelpad=10)
+            plt.xlabel('t [s]')            
         plt.show()
         base_velocity = []
     
