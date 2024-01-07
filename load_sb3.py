@@ -69,7 +69,7 @@ env_config['add_noise'] = True
 env_config['motor_control_mode'] = "CARTESIAN_PD"
 env_config['observation_space_mode'] = "LR_COURSE_OBS"
 env_config['task_env'] = "LR_COURSE_TASK"
-env_config['competition_env'] = True
+env_config['competition_env'] = False
 # env_config['test_env'] = True
 
 # get latest model and normalization stats, and plot 
@@ -100,10 +100,17 @@ time_passed = 0
 time_up = 0
 time_down = 0
 TIME_STEP = 0.001
+time_down_array = []
+time_up_array = []
+foot_positions = {i: {'x': [], 'z': []} for i in range(4)} 
+r_values = []
+rdot_values = []
+theta_values = []
+theta_dot_values = []
 # [TODO] initialize arrays to save data from simulation 
 base_velocity = []
 energy = 0
-for i in range(40000):
+for i in range(5000):
     time_passed = env.envs[0].env.get_sim_time()
     action, _states = model.predict(obs,deterministic=False) # sample at test time? ([TODO]: test)
     obs, rewards, dones, info = env.step(action)
@@ -116,22 +123,54 @@ for i in range(40000):
         COT = energy / (info[0]['base_pos'][0] * 9.81 * 12)
         print("Cost of Transport: ",COT)
         print("Average Velocity: ", np.mean(base_velocity))
+        print("Average Stance Time: ", np.mean(time_down_array))
+        print("Average Swing Time: ", np.mean(time_up_array))
         episode_reward = 0
         energy = 0
-        plt.plot(base_velocity, label="values", marker="o")
+        plt.figure()
+        for i in range(4):  # Assuming 4 legs
+            plt.plot(foot_positions[i]['x'], foot_positions[i]['z'], label=f'Foot {i+1}', linewidth=0.2)
+        plt.xlabel('x (m)')
+        plt.ylabel('z (m)')
+        plt.axis("equal")
+        plt.figure()
+        plt.plot(base_velocity, label="values")
         plt.plot([np.mean(base_velocity)]*len(base_velocity), label="mean", linestyle="--")
+        plt.xlabel('Time (s)')
+        plt.ylabel('Velocity (m/s)')
         plt.title('Velocity')
+        if env_config['motor_control_mode'] == "CPG":
+            plt.figure()
+            plt.plot(r_values, label="r")
+            plt.plot(rdot_values, label="r_dot")
+            plt.plot(theta_values, label="theta")
+            plt.plot(theta_dot_values, label="theta_dot")
+            plt.xlabel('Time (s)')
+            plt.ylabel('CPG States')
+            plt.title('CPG States')
         plt.show()
         base_velocity = []
     
-    if env.envs[0].env.robot.GetContactInfo()[3][0] == 1:
+    if env.envs[0].env.robot.GetContactInfo()[3][3] == 1:
+        time_up_array.append(time_up)
         time_up = 0
         time_down += TIME_STEP
-    if env.envs[0].env.robot.GetContactInfo()[3][0] == 0:
+    if env.envs[0].env.robot.GetContactInfo()[3][3] == 0:
+        time_down_array.append(time_down)
         time_down = 0
         time_up += TIME_STEP
+    foot_positions_flat = env.envs[0].env.robot.GetFootPositions()
 
-    # print("Stance Time: ", time_down,"Swing Time: " ,time_up)
+    for i in range(4):  # Assuming 4 legs
+        # Add foot positions to dictionary
+        foot_positions[i]['x'].append(foot_positions_flat[i*3])
+        foot_positions[i]['z'].append(env.envs[0].env.robot.GetBasePosition()[2]+foot_positions_flat[i*3+2])
+    if env_config['motor_control_mode'] == "CPG":
+        r_values.append(env.envs[0].env._cpg.get_r())
+        rdot_values.append(env.envs[0].env._cpg.get_dr())
+        theta_values.append(env.envs[0].env._cpg.get_theta())
+        theta_dot_values.append(env.envs[0].env._cpg.get_dtheta())
+
     energy += np.abs(np.dot(env.envs[0].env.robot.GetMotorTorques(), env.envs[0].env.robot.GetMotorVelocities()))*env.envs[0].env._time_step
     # [TODO] save data from current robot states for plots 
     # To get base position, for example: env.envs[0].env.robot.GetBasePosition() 

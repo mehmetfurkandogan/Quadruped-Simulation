@@ -194,6 +194,8 @@ class QuadrupedGymEnv(gym.Env):
     self._init_dist_to_goal = 0
     self.abs_env_step = 0
     self._prev_time = 0
+    self.time_up = 0
+    self.time_down = 0
     # if using CPG
     self.setupCPG()
 
@@ -534,6 +536,7 @@ class QuadrupedGymEnv(gym.Env):
             + base_pos_penalty \
             + stability_penalty \
     # at every 1000 steps print the reward components vertically
+
     if self.abs_env_step % 1000 == 0:
       print("vel_tracking_reward: ", vel_tracking_reward)
       print("Rair_sum: ", Rair_sum)
