@@ -58,7 +58,7 @@ from utils.file_utils import get_latest_model, load_all_results
 LEARNING_ALG = "SAC"
 interm_dir = "./logs/intermediate_models/"
 # path to saved models, i.e. interm_dir + '121321105810'
-log_dir = interm_dir + '010124062550' #121723153820 <LR_COURSE> 121823121519 <FLAGRUN> 121723233147 <CPG>
+log_dir = interm_dir + '010624162809' #121723153820 <LR_COURSE> 121823121519 <FLAGRUN> 121723233147 <CPG>
 
 # initialize env configs (render at test time)
 # check ideal conditions, as well as robustness to UNSEEN noise during training
@@ -70,6 +70,7 @@ env_config['motor_control_mode'] = "CARTESIAN_PD"
 env_config['observation_space_mode'] = "LR_COURSE_OBS"
 env_config['task_env'] = "LR_COURSE_TASK"
 env_config['competition_env'] = True
+# env_config['test_env'] = True
 
 # get latest model and normalization stats, and plot 
 stats_path = os.path.join(log_dir, "vec_normalize.pkl")
@@ -98,11 +99,11 @@ episode_reward = 0
 time_passed = 0
 time_up = 0
 time_down = 0
-
+TIME_STEP = 0.001
 # [TODO] initialize arrays to save data from simulation 
 base_velocity = []
 energy = 0
-for i in range(5000):
+for i in range(40000):
     time_passed = env.envs[0].env.get_sim_time()
     action, _states = model.predict(obs,deterministic=False) # sample at test time? ([TODO]: test)
     obs, rewards, dones, info = env.step(action)
@@ -130,7 +131,7 @@ for i in range(5000):
         time_down = 0
         time_up += TIME_STEP
 
-    print("Stance Time: ", time_down,"Swing Time: " ,time_up)
+    # print("Stance Time: ", time_down,"Swing Time: " ,time_up)
     energy += np.abs(np.dot(env.envs[0].env.robot.GetMotorTorques(), env.envs[0].env.robot.GetMotorVelocities()))*env.envs[0].env._time_step
     # [TODO] save data from current robot states for plots 
     # To get base position, for example: env.envs[0].env.robot.GetBasePosition() 
