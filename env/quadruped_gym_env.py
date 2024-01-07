@@ -502,32 +502,31 @@ class QuadrupedGymEnv(gym.Env):
 
     for idx,i in enumerate(foot_contact_bool):
       if i == 1:
-        Rair_sum +=  0.05 * min(self.Ts[idx], 50) if self.Ts[idx] < 80 else 0
+        Rair_sum +=  0.01 * min(self.Ts[idx], 50) if self.Ts[idx] < 80 else 0
         self.Ts[idx] = 0
       else:
         self.Ts[idx] += (self.get_sim_time() - self._prev_time)*1000
-    
     self._prev_time = self.get_sim_time()
 
     slip_penalty = 0
     clearance_penalty = 0
     for i in range(4):
       J, pos = self.robot.ComputeJacobianAndPosition(i)
-      slip_penalty += -0.08 * foot_contact_bool[i] * np.linalg.norm((J@self.robot.GetMotorVelocities()[3*i:3*i+3])[0:2])**2
-      clearance_penalty += -80 * (((self.robot.GetBasePosition()[2]+pos[2]) - 0.12)**2)* np.linalg.norm((J@self.robot.GetMotorVelocities()[3*i:3*i+3])[0:2])**0.5
+      slip_penalty += -0.5 * foot_contact_bool[i] * np.linalg.norm((J@self.robot.GetMotorVelocities()[3*i:3*i+3])[0:2])**2
+      clearance_penalty += -300 * (((self.robot.GetBasePosition()[2]+pos[2]) - 0.08)**2)
 
-    base_pos_penalty = -1000 * ((self.robot.GetBasePosition()[2] - 0.305)**2)
+    base_pos_penalty = -1000 * ((self.robot.GetBasePosition()[2] - 0.26)**2)
     stability_penalty = -10 if np.sum(foot_contact_bool) < 2 else 0
     gait_reward = 2 if (foot_contact_bool[0] + foot_contact_bool[3]) == 2 or (foot_contact_bool[1] + foot_contact_bool[2]) == 2 else 0
     self.abs_env_step = self._prev_env_step + self._env_step_counter
     base_motion_penalty = -3 * (0.8*self.robot.GetBaseLinearVelocity()[2]**2 + np.abs(0.2*self.robot.GetBaseAngularVelocity()[0]) + np.abs(0.2*self.robot.GetBaseAngularVelocity()[1]))
-    c_scale = self.abs_env_step/(4*10**5) if self.abs_env_step < 4*10**5 else 1
-    self._using_test_env = False if self.abs_env_step < 4*10**5 else True
+    c_scale = self.abs_env_step/(3*10**5) if self.abs_env_step < 3*10**5 else 1
+    self._using_test_env = False if self.abs_env_step < 3*10**5 else True
     reward = vel_tracking_reward \
             + c_scale * Rair_sum \
             + orientation_penalty \
             + c_scale * drift_penalty \
-            - c_scale * 0.5 * energy_penalty \
+            - c_scale * 0.2 * energy_penalty \
             + c_scale * slip_penalty \
             + c_scale * clearance_penalty \
             + c_scale * base_motion_penalty \
