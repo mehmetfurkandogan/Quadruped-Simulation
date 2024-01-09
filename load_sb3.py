@@ -58,7 +58,7 @@ from utils.file_utils import get_latest_model, load_all_results
 LEARNING_ALG = "SAC"
 interm_dir = "./logs/intermediate_models/"
 # path to saved models, i.e. interm_dir + '121321105810'
-log_dir = interm_dir + '010624162809' #121723153820 <LR_COURSE> 121823121519 <FLAGRUN> 121723233147 <CPG>
+log_dir = interm_dir + '010624162809' #010624162809 <LR_COURSE> 121823121519 <FLAGRUN> 121723233147 <CPG>
 
 # initialize env configs (render at test time)
 # check ideal conditions, as well as robustness to UNSEEN noise during training
@@ -108,6 +108,7 @@ rdot_values = []
 theta_values = []
 theta_dot_values = []
 # [TODO] initialize arrays to save data from simulation 
+base_angular_vel = []
 base_velocity = []
 energy = 0
 for i in range(5000):
@@ -130,6 +131,9 @@ for i in range(5000):
         plt.figure()
         for i in range(4):  # Assuming 4 legs
             plt.plot(foot_positions[i]['x'], foot_positions[i]['z'], label=f'Foot {i+1}', linewidth=0.2)
+        legend = plt.legend()
+        for line in legend.legendHandles:
+            line.set_linewidth(2.0)
         plt.xlabel('x (m)')
         plt.ylabel('z (m)')
         plt.axis("equal")
@@ -139,6 +143,11 @@ for i in range(5000):
         plt.xlabel('Time (s)')
         plt.ylabel('Velocity (m/s)')
         plt.title('Velocity')
+        plt.figure()
+        plt.plot(base_angular_vel, label="values")
+        plt.xlabel('Time (s)')
+        plt.ylabel('Angular Velocity (rad/s)')
+        plt.title('Angular Velocity')
         if env_config['motor_control_mode'] == "CPG":
             # plot cpg states in subplots
             plt.figure()
@@ -185,7 +194,7 @@ for i in range(5000):
     # [TODO] save data from current robot states for plots 
     # To get base position, for example: env.envs[0].env.robot.GetBasePosition() 
     base_velocity.append(np.linalg.norm(env.envs[0].env.robot.GetBaseLinearVelocity()[0:2]))
-    
+    base_angular_vel.append(env.envs[0].env.robot.GetBaseAngularVelocity()[2])
 # [TODO] make plots:
 
 
