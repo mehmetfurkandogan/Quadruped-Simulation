@@ -28,7 +28,7 @@ The repository depends on recent versions of pybullet, gym, numpy, stable-baseli
 
 ## Usage
 
-This repo introduces a learning framework for a legged robot in a dynamic environment. Trained samples can be found as follows.
+This repo introduces a learning framework for a legged robot in a dynamic environment. Trained samples are as follows.
 
 https://github.com/mehmetfurkandogan/Quadruped-Simulation/assets/123699292/04f1e598-66d9-4453-aecd-fa9cd76665d1
 
